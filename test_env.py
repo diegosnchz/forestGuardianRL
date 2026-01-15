@@ -26,7 +26,7 @@ try:
     assert env.action_space.n == 7, f"Expected 7 actions, got {env.action_space.n}"
     print(f"✓ Action space correct: Discrete({env.action_space.n})")
     
-    expected_shape = (10, 10)
+    expected_shape = (20, 20)
     actual_shape = env.observation_space.shape
     assert actual_shape == expected_shape, f"Expected shape {expected_shape}, got {actual_shape}"
     print(f"✓ Observation space correct: Box{actual_shape}")
@@ -41,7 +41,7 @@ try:
     
     # Verify grid values
     unique_values = set(np.unique(obs))
-    valid_values = {0, 1, 2, 3}
+    valid_values = {0, 1, 2, 3, 4}
     assert unique_values.issubset(valid_values), f"Invalid grid values: {unique_values}"
     print(f"✓ Grid values valid: {unique_values}")
     
@@ -75,8 +75,8 @@ try:
         print(f"  ✓ Action {action} ({action_names[action]}): reward={reward:.2f}, terminated={terminated}")
         
         # Verify observation is valid
-        assert obs.shape == (10, 10), f"Invalid observation shape: {obs.shape}"
-        assert set(np.unique(obs)).issubset({0, 1, 2, 3}), "Invalid values in observation"
+        assert obs.shape == (20, 20), f"Invalid observation shape: {obs.shape}"
+        assert set(np.unique(obs)).issubset({0, 1, 2, 3, 4}), "Invalid values in observation"
         
 except Exception as e:
     print(f"✗ Step function failed: {e}")

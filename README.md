@@ -4,11 +4,11 @@ Ejercicio Máster - Entorno de Aprendizaje por Refuerzo para combatir incendios 
 
 ## Descripción
 
-Este proyecto implementa un entorno personalizado de Gymnasium para entrenar agentes de RL que aprendan a gestionar incendios forestales. El agente debe moverse por un bosque de 10x10, extinguir incendios y prevenir la destrucción del bosque.
+Este proyecto implementa un entorno personalizado de Gymnasium para entrenar agentes de RL que aprendan a gestionar incendios forestales. El agente debe moverse por un bosque de 20x20, extinguir incendios y prevenir la destrucción del bosque.
 
 ### Características del Entorno
 
-- **Grid**: 10x10 celdas
+- **Grid**: 20x20 celdas
 - **Estados**:
   - 0 = Vacío (celda quemada)
   - 1 = Árbol
@@ -32,7 +32,7 @@ Este proyecto implementa un entorno personalizado de Gymnasium para entrenar age
 
 - **Mecánica de Fuego**:
   - El fuego se expande estocásticamente a árboles vecinos
-  - Probabilidad de expansión: 30% por defecto
+  - Probabilidad de expansión: 60% por defecto
   - Los fuegos se apagan después de expandirse (simulando consumo)
 
 ## Instalación
@@ -108,8 +108,8 @@ Puedes ajustar los parámetros del entorno al crear la instancia:
 
 ```python
 env = ForestFireEnv(
-    grid_size=10,              # Tamaño del grid
-    fire_spread_prob=0.3,      # Probabilidad de expansión del fuego
+  grid_size=20,              # Tamaño del grid
+  fire_spread_prob=0.6,      # Probabilidad de expansión del fuego
     initial_trees=0.6,         # Proporción inicial de árboles
     initial_fires=3            # Número de fuegos iniciales
 )

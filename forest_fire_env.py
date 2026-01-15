@@ -9,14 +9,14 @@ class ForestFireEnv(gym.Env):
     """
     Custom Gymnasium environment for forest fire management.
     
-    Grid: 10x10
+    Grid: 20x20 (por defecto)
     States: 0=Empty/Burned, 1=Tree, 2=Fire, 3=Agent1, 4=Agent2 (optional)
     Actions: 0-3=Move (up, down, left, right), 4=Cut tree, 5=Extinguish fire, 6=Wait
     """
     
     metadata = {'render_modes': ['human', 'rgb_array']}
     
-    def __init__(self, grid_size=10, fire_spread_prob=0.6, initial_trees=0.6, initial_fires=5, num_agents=1):
+    def __init__(self, grid_size=20, fire_spread_prob=0.6, initial_trees=0.6, initial_fires=5, num_agents=1):
         super(ForestFireEnv, self).__init__()
         
         self.grid_size = grid_size
@@ -35,6 +35,9 @@ class ForestFireEnv(gym.Env):
         # Number of agents (for visualization bonus)
         self.num_agents = max(1, int(num_agents))
         self.agent_positions = []  # list of (row, col) when num_agents > 1
+        
+        # Fire spread control: fire spreads every N steps (slower propagation)
+        self.fire_spread_interval = 3  # Fire spreads every 3 steps instead of every step
         
         # Action space: 7 discrete actions
         # 0: Move up, 1: Move down, 2: Move left, 3: Move right
@@ -173,37 +176,39 @@ class ForestFireEnv(gym.Env):
             else:
                 self.water_tank = min(self.water_tank + 2, self.max_water)
         
-        # Fire spread phase (stochastic)
+        # Fire spread phase (stochastic) - only every N steps for slower propagation
         fire_positions = np.argwhere(self.grid == 2)
-        new_fires = []
         
-        for fire_pos in fire_positions:
-            row, col = fire_pos
-            # Check all 4 neighbors
-            neighbors = [
-                (row - 1, col), (row + 1, col),
-                (row, col - 1), (row, col + 1)
-            ]
+        if self.step_count % self.fire_spread_interval == 0:
+            new_fires = []
             
-            for neighbor in neighbors:
-                n_row, n_col = neighbor
-                # Check if neighbor is within bounds
-                if 0 <= n_row < self.grid_size and 0 <= n_col < self.grid_size:
-                    # Fire spreads to trees with probability
-                    if self.grid[n_row, n_col] == 1:
-                        if self.np_random.random() < self.fire_spread_prob:
-                            new_fires.append((n_row, n_col))
+            for fire_pos in fire_positions:
+                row, col = fire_pos
+                # Check all 4 neighbors
+                neighbors = [
+                    (row - 1, col), (row + 1, col),
+                    (row, col - 1), (row, col + 1)
+                ]
+                
+                for neighbor in neighbors:
+                    n_row, n_col = neighbor
+                    # Check if neighbor is within bounds
+                    if 0 <= n_row < self.grid_size and 0 <= n_col < self.grid_size:
+                        # Fire spreads to trees with probability
+                        if self.grid[n_row, n_col] == 1:
+                            if self.np_random.random() < self.fire_spread_prob:
+                                new_fires.append((n_row, n_col))
+            
+            # Burn out old fires first (before applying new ones)
+            # This ensures fires persist for at least one interval
+            for fire_pos in fire_positions:
+                self.grid[tuple(fire_pos)] = 0  # Burned out
+            
+            # Apply new fires after burning out old ones
+            for fire_pos in new_fires:
+                self.grid[fire_pos] = 2
         
-        # Burn out old fires first (before applying new ones)
-        # This ensures fires persist for at least one step
-        for fire_pos in fire_positions:
-            self.grid[tuple(fire_pos)] = 0  # Burned out
-        
-        # Apply new fires after burning out old ones
-        for fire_pos in new_fires:
-            self.grid[fire_pos] = 2
-        
-        # Calculate penalty for active fires (new fires that just spread)
+        # Calculate penalty for active fires
         active_fires = np.sum(self.grid == 2)
         reward -= 0.1 * active_fires
         
@@ -292,34 +297,66 @@ class ForestFireEnv(gym.Env):
         
         return ax
 
-    def render_animation(self, frames, agent_labels=None, filename='forest_fire_animation.gif', fps=5):
+    def render_animation(self, frames, agent_labels=None, agent_positions=None, filename='forest_fire_animation.gif', fps=5):
         """Create and save an animation (GIF or MP4) from a list of grid frames.
 
         Args:
-            frames: list of np.ndarray grids over time
+            frames: list of np.ndarray grids over time (without agent overlay)
             agent_labels: list of agent names per frame (e.g., ['navegador', 'operario', ...])
+            agent_positions: list of agent positions per frame (e.g., [(0,0), (0,1), ...])
             filename: output file path, .gif or .mp4
             fps: frames per second
         """
         from matplotlib.colors import ListedColormap
         
-        fig, ax = plt.subplots(figsize=(7, 7))
+        fig, ax = plt.subplots(figsize=(8, 8))
         cmap = ListedColormap(['white', 'green', 'red', 'blue', 'orange'])
 
-        im = ax.imshow(frames[0], interpolation='nearest', cmap=cmap, vmin=0, vmax=4)
+        # Create first frame with agent overlay
+        first_frame = frames[0].copy()
+        if agent_positions and len(agent_positions) > 0:
+            agent_pos = agent_positions[0]
+            agent_marker = 3  # Default blue (navegador)
+            if agent_labels and len(agent_labels) > 0:
+                if 'operario' in agent_labels[0].lower():
+                    agent_marker = 4  # Orange
+            first_frame[agent_pos] = agent_marker
+        
+        im = ax.imshow(first_frame, interpolation='nearest', cmap=cmap, vmin=0, vmax=4)
         ax.grid(True, which='both', color='gray', linewidth=0.5, alpha=0.3)
         ax.set_xticks(np.arange(-0.5, self.grid_size, 1))
         ax.set_yticks(np.arange(-0.5, self.grid_size, 1))
         ax.set_xticklabels([])
         ax.set_yticklabels([])
-        title_text = ax.set_title('Forest Fire - Step 0')
+        
+        # Initial title
+        trees = np.sum(frames[0] == 1)
+        fires = np.sum(frames[0] == 2)
+        label = ''
+        if agent_labels and len(agent_labels) > 0:
+            label = f' | Acting: {agent_labels[0].upper()}'
+        title_text = ax.set_title(f'Step 0 | Trees: {trees} | Fires: {fires}{label}')
 
         def update(i):
-            im.set_data(frames[i])
+            # Create frame copy and overlay agent
+            display_frame = frames[i].copy()
+            if agent_positions and i < len(agent_positions):
+                agent_pos = agent_positions[i]
+                agent_marker = 3  # Default blue (navegador)
+                if agent_labels and i < len(agent_labels):
+                    if 'operario' in agent_labels[i].lower():
+                        agent_marker = 4  # Orange
+                display_frame[agent_pos] = agent_marker
+            
+            im.set_data(display_frame)
+            
+            # Update title
+            trees = np.sum(frames[i] == 1)
+            fires = np.sum(frames[i] == 2)
             label = ''
             if agent_labels and i < len(agent_labels):
                 label = f' | Acting: {agent_labels[i].upper()}'
-            title_text.set_text(f'Forest Fire - Step {i}{label}')
+            title_text.set_text(f'Step {i} | Trees: {trees} | Fires: {fires}{label}')
             return [im, title_text]
 
         anim = animation.FuncAnimation(fig, update, frames=len(frames), interval=1000//max(1, fps), blit=True)

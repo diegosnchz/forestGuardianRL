@@ -212,7 +212,7 @@ def train_agent(total_timesteps=50000):
     print("ENTRENAMIENTO DEL NAVEGADOR (PPO Agent)")
     print("="*60)
     print("Creating environment...")
-    env = ForestFireEnv()
+    env = ForestFireEnv(grid_size=20)
     
     print("Initializing PPO agent (Navegador)...")
     model = PPO(
@@ -286,24 +286,30 @@ def test_agent(model, env, n_episodes=5):
 
 def visualize_episode(model, env):
     """Visualize an episode with dual-agent display and save as animated GIF."""
-    print("\nGenerating animated GIF with dual-agent visualization...")
+    print("\n" + "="*60)
+    print("GENERANDO GIF ANIMADO CON VISUALIZACIÓN DUAL-AGENT")
+    print("="*60)
     
     manager = ForestGuardianManager(model)
     # Use dual-agent environment for visualization
-    vis_env = ForestFireEnv(num_agents=2)
+    vis_env = ForestFireEnv(grid_size=20, num_agents=2)
     obs, info = vis_env.reset()
     done = False
     frames = []
     agent_labels = []
+    agent_positions = []
     
-    # Initial frame
-    frames.append(vis_env._get_obs())
-    agent_labels.append('inicio')
+    # Initial frame - grid only, no agent overlay
+    frames.append(vis_env.grid.copy())
+    agent_labels.append('navegador')
+    agent_positions.append(vis_env.agent_positions.copy())
     
     step = 0
-    max_steps = 100  # Increased for longer episodes
+    max_steps = 50  # Exactly 50 steps as requested
     
-    while not done and step < max_steps:
+    print(f"Capturando episodio de hasta {max_steps} pasos...")
+    
+    while step < max_steps and not done:
         # Decide action using manager
         action, agent_name, reason = manager.decide_action(
             obs, vis_env.agent_pos, vis_env.water_tank, vis_env.max_water
@@ -318,26 +324,50 @@ def visualize_episode(model, env):
         obs, reward, terminated, truncated, info = vis_env.step(action)
         done = terminated or truncated
         
-        # Capture frame with agent positions
-        frames.append(vis_env._get_obs())
+        # Capture frame: grid only (no baked-in agent)
+        frames.append(vis_env.grid.copy())
         agent_labels.append(agent_label)
+        agent_positions.append(vis_env.agent_positions.copy())
         step += 1
+        
+        # Show progress
+        if step % 10 == 0:
+            print(f"  Capturados {step} frames...")
     
-    print(f"Episode completed: {step} steps")
+    print(f"\n✓ {len(frames)} frames capturados (episodio completó en paso {step})")
+    print(f"Guardando GIF animado...")
     
-    # Save animated GIF
+    # Find next version number
+    import os
+    import glob
+    gif_dir = 'GIF'
+    os.makedirs(gif_dir, exist_ok=True)
+    existing_gifs = glob.glob(os.path.join(gif_dir, 'forest_fire_dual_v*.gif'))
+    version = 1
+    if existing_gifs:
+        versions = [int(f.split('_v')[-1].split('.')[0]) for f in existing_gifs if '_v' in f]
+        if versions:
+            version = max(versions) + 1
+    
+    gif_filename = os.path.join(gif_dir, f'forest_fire_dual_v{version}.gif')
+    
+    # Save animated GIF with agent positions for overlay
     vis_env.render_animation(
         frames, 
         agent_labels=agent_labels,
-        filename='forest_fire_simulation.gif', 
-        fps=6
+        agent_positions=[pos[0] for pos in agent_positions] if vis_env.num_agents == 2 else agent_positions,
+        filename=gif_filename, 
+        fps=5
     )
     
-    print(f"\nVisualization complete!")
-    print(f"  - Animated GIF: forest_fire_simulation.gif")
-    print(f"  - Total frames: {len(frames)}")
-    print(f"  - Operario actions: {manager.operario_actions}")
-    print(f"  - Navegador actions: {manager.navegador_actions}")
+    print(f"\n{'='*60}")
+    print(f"VISUALIZACIÓN COMPLETA")
+    print(f"{'='*60}")
+    print(f"  ✓ Archivo: {gif_filename}")
+    print(f"  ✓ Total frames: {len(frames)}")
+    print(f"  ✓ Operario (naranja): {manager.operario_actions} acciones")
+    print(f"  ✓ Navegador (azul): {manager.navegador_actions} acciones")
+    print(f"{'='*60}\n")
 
 
 def main():
@@ -347,12 +377,78 @@ def main():
     model, env = train_agent(total_timesteps=50000)
     hierarchical_rewards, hierarchical_lengths, manager = test_agent(model, env, n_episodes=3)
     visualize_episode(model, env)
+    
+    # Generar GIF automáticamente después del entrenamiento
+    print("\n" + "="*60)
+    print("GENERANDO GIF AUTOMÁTICAMENTE...")
+    print("="*60 + "\n")
+    
+    import os
+    import glob
+    from forest_fire_env import ForestFireEnv
+    
+    # Create manager for GIF generation
+    gif_manager = ForestGuardianManager(model)
+    gif_env = ForestFireEnv(grid_size=20, num_agents=1)
+    obs, info = gif_env.reset()
+    
+    frames = []
+    agent_labels = []
+    agent_positions = []
+    
+    # Initial frame
+    frames.append(gif_env.grid.copy())
+    agent_labels.append('navegador')
+    agent_positions.append(gif_env.agent_pos)
+    
+    step = 0
+    done = False
+    
+    while not done and step < 100:
+        action, agent_name, reason = gif_manager.decide_action(
+            obs, gif_env.agent_pos, gif_env.water_tank, gif_env.max_water
+        )
+        
+        agent_label = 'operario' if 'Operario' in agent_name else 'navegador'
+        
+        obs, reward, terminated, truncated, info = gif_env.step(action)
+        done = terminated or truncated
+        
+        frames.append(gif_env.grid.copy())
+        agent_labels.append(agent_label)
+        agent_positions.append(gif_env.agent_pos)
+        step += 1
+    
+    # Find next version number
+    gif_dir = 'GIF'
+    os.makedirs(gif_dir, exist_ok=True)
+    existing_gifs = glob.glob(os.path.join(gif_dir, 'forest_fire_training_v*.gif'))
+    version = 1
+    if existing_gifs:
+        versions = [int(f.split('_v')[-1].split('.')[0]) for f in existing_gifs if '_v' in f]
+        if versions:
+            version = max(versions) + 1
+    
+    gif_filename = os.path.join(gif_dir, f'forest_fire_training_v{version}.gif')
+    
+    # Generate GIF
+    gif_env.render_animation(
+        frames, 
+        agent_labels=agent_labels,
+        agent_positions=agent_positions,
+        filename=gif_filename, 
+        fps=5
+    )
+    
+    print(f"✓ GIF generado: {gif_filename}")
+    print(f"✓ Total frames: {len(frames)}")
+    
     print("\n" + "="*60)
     print("Training and testing complete!")
     print("="*60)
     print(f"\nGenerated files:")
     print(f"  - ppo_forest_fire.zip (trained Navegador model)")
-    print(f"  - forest_fire_simulation.gif (animated episode)")
+    print(f"  - {gif_filename} (animated episode)")
     print(f"\nArchitecture Summary:")
     print(f"  - Operario Agent: Rule-based system for critical decisions")
     print(f"  - Navegador Agent: PPO neural network for strategic movement")
@@ -360,6 +456,9 @@ def main():
     print(f"\nVisualization:")
     print(f"  - Blue square: Navegador (PPO) acting")
     print(f"  - Orange square: Operario (Rules) acting")
+    print(f"\nCambios recientes:")
+    print(f"  - 🔥 Fuego ahora se propaga cada 3 pasos (más tiempo para reaccionar)")
+    print(f"  - 🎬 GIF se genera automáticamente después del entrenamiento")
     print("="*60 + "\n")
 
 

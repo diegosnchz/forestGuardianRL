@@ -72,7 +72,7 @@ def main():
     
     # Create environment
     env = ForestFireEnv(
-        grid_size=10,
+        grid_size=20,
         fire_spread_prob=0.3,
         initial_trees=0.6,
         initial_fires=3
