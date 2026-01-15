@@ -1,47 +1,43 @@
 import os
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 import numpy as np
+import time
 from forest_fire_env import ForestFireEnv
 
 class TerminatorAgent:
     def decide(self, obs, pos):
         r, c = pos
-        # Buscar todos los fuegos
         fires = np.argwhere(obs == 2)
         
-        if len(fires) == 0: return 6 # Victoria, descansar
+        if len(fires) == 0: return 6
         
-        # Buscar el fuego más cercano
+        # Buscar fuego más cercano
         dists = [abs(r-fr) + abs(c-fc) for fr, fc in fires]
         nearest_idx = np.argmin(dists)
         target_r, target_c = fires[nearest_idx]
         dist = dists[nearest_idx]
         
-        # LÓGICA AGRESIVA:
-        # Si la distancia es 1 (adyacente) o 0 (encima), APAGAR.
-        # El entorno apaga en radio 3x3, así que esto es seguro.
+        # Disparar si estoy al lado
         if dist <= 1: 
             return 5
-        
-        # MOVERSE HACIA EL FUEGO
-        # Prioridad: Moverse en el eje donde la distancia es mayor
+            
+        # Moverse
         diff_r = target_r - r
         diff_c = target_c - c
         
         if abs(diff_r) > abs(diff_c):
-            # Mover vertical
             return 1 if diff_r > 0 else 0
         else:
-            # Mover horizontal
             return 3 if diff_c > 0 else 2
 
 def make_the_gif():
     print("="*60)
-    print("GENERANDO DEMO FINAL (10x10) - CARPETA PERSONALIZADA")
+    print("GENERANDO NUEVA DEMO ESTOCÁSTICA")
     print("="*60)
     
-    # Creamos entorno
-    env = ForestFireEnv(grid_size=10, num_agents=2) 
+    # Entorno 10x10 aleatorio
+    # initial_fires=3 para que haya varios focos aleatorios
+    env = ForestFireEnv(grid_size=10, num_agents=2, initial_fires=3) 
     obs, _ = env.reset()
     
     agent_blue = TerminatorAgent()
@@ -52,9 +48,9 @@ def make_the_gif():
     
     done = False
     step = 0
-    max_steps = 60
+    max_steps = 80
     
-    print(">>> Simulando partida...")
+    print(">>> Simulando partida aleatoria...")
     while not done and step < max_steps:
         # Decidir acciones
         act_blue = agent_blue.decide(obs, env.agent_positions[0])
@@ -67,13 +63,17 @@ def make_the_gif():
         done = terminated
         step += 1
         
-        fuegos = np.sum(obs==2)
         if step % 5 == 0:
-            print(f"   Step {step}: Quedan {fuegos} celdas de fuego.")
+            fuegos = np.sum(obs==2)
+            print(f"   Step {step}: Quedan {fuegos} fuegos.")
 
-    print(f"\n>>> Generando GIF con {len(frames)} frames...")
-    # Nombre de archivo único
-    env.render_animation(frames, filename='forest_fire_success.gif')
+    print(f"\n>>> Generando GIF único...")
+    
+    # Nombre único basado en el tiempo para no sobrescribir
+    timestamp = int(time.time())
+    filename = f'forest_fire_demo_{timestamp}.gif'
+    
+    env.render_animation(frames, filename=filename)
 
 if __name__ == "__main__":
     make_the_gif()

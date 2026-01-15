@@ -9,7 +9,7 @@ import os
 class ForestFireEnv(gym.Env):
     metadata = {'render_modes': ['human', 'rgb_array']}
     
-    def __init__(self, grid_size=10, fire_spread_prob=0.1, initial_trees=0.6, initial_fires=2, num_agents=2):
+    def __init__(self, grid_size=10, fire_spread_prob=0.1, initial_trees=0.6, initial_fires=3, num_agents=2):
         super(ForestFireEnv, self).__init__()
         
         # GRID 10x10
@@ -19,7 +19,7 @@ class ForestFireEnv(gym.Env):
         self.initial_fires = initial_fires
         self.num_agents = num_agents
         
-        # AGUA INFINITA
+        # AGUA INFINITA (Mantenemos el truco)
         self.water_tanks = [999] * num_agents
         self.max_water = 999
         self.river_row = 0
@@ -34,20 +34,34 @@ class ForestFireEnv(gym.Env):
         super().reset(seed=seed)
         self.grid = np.zeros((self.grid_size, self.grid_size), dtype=np.int32)
         
-        # Árboles
+        # 1. Generar Árboles Aleatorios
         tree_mask = self.np_random.random((self.grid_size, self.grid_size)) < self.initial_trees
         self.grid[tree_mask] = 1
         
-        # AGENTES EN ESQUINAS OPUESTAS
-        self.agent_positions = [(0, 0), (self.grid_size-1, self.grid_size-1)]
-        
-        # FUEGO MASIVO EN EL CENTRO (3x3)
-        # Esto asegura que tengan algo que apagar sí o sí
-        center = self.grid_size // 2
-        for r in range(center-1, center+2):
-            for c in range(center-1, center+2):
-                if 0 <= r < self.grid_size and 0 <= c < self.grid_size:
-                    self.grid[r,c] = 2
+        # 2. Colocar Agentes Aleatoriamente (pero separados)
+        self.agent_positions = []
+        attempts = 0
+        while len(self.agent_positions) < self.num_agents and attempts < 100:
+            r = self.np_random.integers(0, self.grid_size)
+            c = self.np_random.integers(0, self.grid_size)
+            
+            # Evitar poner un agente encima de otro
+            if (r,c) not in self.agent_positions:
+                self.agent_positions.append((r,c))
+            attempts += 1
+            
+        # 3. Colocar Fuego Aleatorio (lejos de los agentes para dar emoción)
+        fires_placed = 0
+        attempts = 0
+        while fires_placed < self.initial_fires and attempts < 200:
+            r = self.np_random.integers(1, self.grid_size-1)
+            c = self.np_random.integers(1, self.grid_size-1)
+            
+            # Solo poner fuego si hay árbol y no hay agente
+            if self.grid[r,c] == 1 and (r,c) not in self.agent_positions:
+                self.grid[r,c] = 2
+                fires_placed += 1
+            attempts += 1
             
         return self._get_obs(), {}
     
@@ -108,19 +122,17 @@ class ForestFireEnv(gym.Env):
         # RUTA ESPECÍFICA DEL USUARIO
         base_dir = r"C:\Users\diego\Downloads\forestGuardianRL\GIF"
         
-        # Crear carpeta si no existe
         if not os.path.exists(base_dir):
             try:
                 os.makedirs(base_dir)
             except:
-                base_dir = "." # Fallback si falla la ruta
+                base_dir = "." 
         
         full_path = os.path.join(base_dir, filename)
         
         print(f"   --> Generando GIF en: {full_path} ...")
         
         fig, ax = plt.subplots(figsize=(5, 5))
-        # Blanco, Verde, Rojo, Azul, Naranja
         cmap = ListedColormap(['white', 'green', 'red', 'blue', 'orange'])
         
         im = ax.imshow(frames[0], cmap=cmap, vmin=0, vmax=4)
@@ -136,7 +148,6 @@ class ForestFireEnv(gym.Env):
             writer = PillowWriter(fps=fps)
             anim.save(full_path, writer=writer)
             print(f"   --> ¡GIF GUARDADO EXITOSAMENTE!")
-            print(f"   --> Ruta: {full_path}")
         except Exception as e:
             print(f"ERROR GUARDANDO GIF: {e}")
         finally:
