@@ -43,7 +43,15 @@ pip install -r requirements.txt
 
 ## Uso
 
-### Validar el Entorno
+### 1. Demo Rápido (Sin Entrenamiento)
+
+Ejecuta una demostración con política aleatoria para ver el entorno en acción:
+
+```bash
+python demo.py
+```
+
+### 2. Validar el Entorno
 
 Ejecuta el script de prueba para verificar que el entorno funciona correctamente:
 
@@ -51,7 +59,7 @@ Ejecuta el script de prueba para verificar que el entorno funciona correctamente
 python test_env.py
 ```
 
-### Entrenar y Probar el Agente
+### 3. Entrenar y Probar el Agente
 
 Entrena un agente PPO durante 20,000 pasos y visualiza los resultados:
 
@@ -80,7 +88,9 @@ forestGuardianRL/
 ├── forest_fire_env.py    # Implementación del entorno Gymnasium
 ├── train_and_test.py     # Script de entrenamiento y prueba
 ├── test_env.py           # Script de validación del entorno
+├── demo.py               # Demo con política aleatoria
 ├── requirements.txt      # Dependencias del proyecto
+├── .gitignore           # Archivos ignorados por git
 └── README.md            # Este archivo
 ```
 
