@@ -135,28 +135,6 @@ def visualize_episode(model, env):
     plt.show()
 
 
-def plot_training_progress(episode_rewards):
-    """Plot the episode rewards over time."""
-    plt.figure(figsize=(10, 6))
-    plt.plot(episode_rewards, alpha=0.6, label='Episode Reward')
-    
-    # Add moving average
-    window = min(50, len(episode_rewards) // 10)
-    if window > 1:
-        moving_avg = np.convolve(episode_rewards, np.ones(window)/window, mode='valid')
-        plt.plot(range(window-1, len(episode_rewards)), moving_avg, 
-                 'r-', linewidth=2, label=f'Moving Average ({window})')
-    
-    plt.xlabel('Episode')
-    plt.ylabel('Total Reward')
-    plt.title('Training Progress')
-    plt.legend()
-    plt.grid(True, alpha=0.3)
-    plt.savefig('training_progress.png', dpi=150, bbox_inches='tight')
-    print(f"Training progress plot saved to 'training_progress.png'")
-    plt.show()
-
-
 def main():
     """Main function to train and test the agent."""
     print("="*50)
@@ -173,6 +151,9 @@ def main():
     visualize_episode(model, env)
     
     print("\nTraining and testing complete!")
+    print("\nNote: Training progress during PPO learning is shown in the")
+    print("console output above. Test episode results are visualized in")
+    print("'forest_fire_visualization.png'")
 
 
 if __name__ == "__main__":

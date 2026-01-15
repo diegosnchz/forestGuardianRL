@@ -134,16 +134,16 @@ class ForestFireEnv(gym.Env):
                         if self.np_random.random() < self.fire_spread_prob:
                             new_fires.append((n_row, n_col))
         
-        # Apply new fires
+        # Burn out old fires first (before applying new ones)
+        # This ensures fires persist for at least one step
+        for fire_pos in fire_positions:
+            self.grid[tuple(fire_pos)] = 0  # Burned out
+        
+        # Apply new fires after burning out old ones
         for fire_pos in new_fires:
             self.grid[fire_pos] = 2
         
-        # Burn out fires (trees on fire become empty after spreading)
-        for fire_pos in fire_positions:
-            if self.grid[tuple(fire_pos)] == 2:  # Still on fire
-                self.grid[tuple(fire_pos)] = 0  # Burned out
-        
-        # Calculate penalty for active fires
+        # Calculate penalty for active fires (new fires that just spread)
         active_fires = np.sum(self.grid == 2)
         reward -= 0.1 * active_fires
         
@@ -157,9 +157,9 @@ class ForestFireEnv(gym.Env):
                 reward -= 100
                 terminated = True
         
-        # Episode ends if no more fires (success) or max steps
+        # Episode ends if no more fires and there were fires at the start of this step
         if active_fires == 0 and len(fire_positions) > 0:
-            # All fires extinguished
+            # All fires extinguished (either by agent or burned out with no spread)
             reward += 50  # Bonus for clearing all fires
             terminated = True
         
