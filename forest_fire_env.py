@@ -2,6 +2,7 @@ import gymnasium as gym
 from gymnasium import spaces
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib import animation
 
 
 class ForestFireEnv(gym.Env):
@@ -9,13 +10,13 @@ class ForestFireEnv(gym.Env):
     Custom Gymnasium environment for forest fire management.
     
     Grid: 10x10
-    States: 0=Empty, 1=Tree, 2=Fire, 3=Agent
+    States: 0=Empty/Burned, 1=Tree, 2=Fire, 3=Agent1, 4=Agent2 (optional)
     Actions: 0-3=Move (up, down, left, right), 4=Cut tree, 5=Extinguish fire, 6=Wait
     """
     
     metadata = {'render_modes': ['human', 'rgb_array']}
     
-    def __init__(self, grid_size=10, fire_spread_prob=0.5, initial_trees=0.6, initial_fires=3):
+    def __init__(self, grid_size=10, fire_spread_prob=0.6, initial_trees=0.6, initial_fires=5, num_agents=1):
         super(ForestFireEnv, self).__init__()
         
         self.grid_size = grid_size
@@ -31,14 +32,19 @@ class ForestFireEnv(gym.Env):
         # Agent can refill water faster here
         self.river_row = 0
         
+        # Number of agents (for visualization bonus)
+        self.num_agents = max(1, int(num_agents))
+        self.agent_positions = []  # list of (row, col) when num_agents > 1
+        
         # Action space: 7 discrete actions
         # 0: Move up, 1: Move down, 2: Move left, 3: Move right
         # 4: Cut tree, 5: Extinguish fire, 6: Wait
         self.action_space = spaces.Discrete(7)
         
-        # Observation space: grid_size x grid_size grid with values 0-3
+        # Observation space values:
+        # 0=Empty/Burned, 1=Tree, 2=Fire, 3=Agent1, 4=Agent2 (if enabled)
         self.observation_space = spaces.Box(
-            low=0, high=3, shape=(grid_size, grid_size), dtype=np.int32
+            low=0, high=4, shape=(grid_size, grid_size), dtype=np.int32
         )
         
         # Initialize state variables
@@ -59,20 +65,28 @@ class ForestFireEnv(gym.Env):
         self.grid[tree_mask] = 1
         self.initial_tree_count = np.sum(self.grid == 1)
         
-        # Place agent in a random empty or tree position
-        empty_or_tree_positions = np.argwhere(self.grid <= 1)
-        if len(empty_or_tree_positions) > 0:
-            agent_idx = self.np_random.integers(0, len(empty_or_tree_positions))
-            self.agent_pos = tuple(empty_or_tree_positions[agent_idx])
+        # Place agent(s)
+        if self.num_agents == 1:
+            empty_or_tree_positions = np.argwhere(self.grid <= 1)
+            if len(empty_or_tree_positions) > 0:
+                agent_idx = self.np_random.integers(0, len(empty_or_tree_positions))
+                self.agent_pos = tuple(empty_or_tree_positions[agent_idx])
+            else:
+                self.agent_pos = (0, 0)
+            self.agent_positions = [self.agent_pos]
         else:
-            self.agent_pos = (0, 0)
+            # Two agents starting at opposite corners for visual contrast
+            self.agent_positions = [(0, 0), (self.grid_size - 1, self.grid_size - 1)]
+            self.agent_pos = self.agent_positions[0]  # backward compatibility
         
         # Clear river zone (row 0) from trees to make it accessible for water refills
         self.grid[self.river_row, :] = 0
         
         # Place initial fires randomly on trees (not where agent is, and not in river zone)
         tree_positions = np.argwhere(self.grid == 1)
-        tree_positions = [tuple(pos) for pos in tree_positions if tuple(pos) != self.agent_pos]
+        # avoid placing fire on any agent position
+        agent_set = set(self.agent_positions)
+        tree_positions = [tuple(pos) for pos in tree_positions if tuple(pos) not in agent_set]
         
         if len(tree_positions) >= self.initial_fires:
             fire_indices = self.np_random.choice(len(tree_positions), self.initial_fires, replace=False)
@@ -87,9 +101,15 @@ class ForestFireEnv(gym.Env):
         return self._get_obs(), {}
     
     def _get_obs(self):
-        """Get current observation (grid with agent marked)."""
+        """Get current observation (grid with agent(s) marked)."""
         obs = self.grid.copy()
-        obs[self.agent_pos] = 3  # Mark agent position
+        if self.num_agents == 1:
+            obs[self.agent_pos] = 3  # Mark single agent
+        else:
+            a1 = self.agent_positions[0]
+            a2 = self.agent_positions[1]
+            obs[a1] = 3
+            obs[a2] = 4
         return obs
     
     def step(self, action):
@@ -99,44 +119,58 @@ class ForestFireEnv(gym.Env):
         terminated = False
         truncated = False
         
-        # Save agent's current position (not used currently)
+        # Execute action (supports single or multi-agent, synchronized actions)
+        def move(pos, action_id):
+            r, c = pos
+            if action_id == 0:  # up
+                return (max(0, r - 1), c)
+            if action_id == 1:  # down
+                return (min(self.grid_size - 1, r + 1), c)
+            if action_id == 2:  # left
+                return (r, max(0, c - 1))
+            if action_id == 3:  # right
+                return (r, min(self.grid_size - 1, c + 1))
+            return (r, c)
         
-        # Execute action
-        if action == 0:  # Move up
-            new_pos = (max(0, self.agent_pos[0] - 1), self.agent_pos[1])
-            self.agent_pos = new_pos
-        elif action == 1:  # Move down
-            new_pos = (min(self.grid_size - 1, self.agent_pos[0] + 1), self.agent_pos[1])
-            self.agent_pos = new_pos
-        elif action == 2:  # Move left
-            new_pos = (self.agent_pos[0], max(0, self.agent_pos[1] - 1))
-            self.agent_pos = new_pos
-        elif action == 3:  # Move right
-            new_pos = (self.agent_pos[0], min(self.grid_size - 1, self.agent_pos[1] + 1))
-            self.agent_pos = new_pos
-        elif action == 4:  # Cut tree
-            if self.grid[self.agent_pos] == 1:
-                self.grid[self.agent_pos] = 0
-                reward += 1  # Small reward for cutting
-        elif action == 5:  # Extinguish fire
-            if self.water_tank > 0:
-                if self.grid[self.agent_pos] == 2:
-                    self.grid[self.agent_pos] = 0
-                    self.water_tank -= 1
-                    reward += 10  # Big reward for extinguishing fire
+        # Movement
+        if action in [0, 1, 2, 3]:
+            if self.num_agents == 1:
+                self.agent_pos = move(self.agent_pos, action)
+                self.agent_positions[0] = self.agent_pos
             else:
-                # Penalty for trying to extinguish without water
-                reward -= 1
-        elif action == 6:  # Wait
-            # Recover water during wait (recharge)
-            # Faster recovery if in River zone (row 0)
-            if self.agent_pos[0] == self.river_row:
-                # River zone: full refill
+                self.agent_positions = [move(p, action) for p in self.agent_positions]
+                self.agent_pos = self.agent_positions[0]  # keep primary
+        
+        # Cut tree
+        elif action == 4:
+            positions = self.agent_positions if self.num_agents > 1 else [self.agent_pos]
+            for p in positions:
+                if self.grid[p] == 1:
+                    self.grid[p] = 0
+                    reward += 1
+        
+        # Extinguish fire
+        elif action == 5:
+            positions = self.agent_positions if self.num_agents > 1 else [self.agent_pos]
+            extinguishes = 0
+            for p in positions:
+                if self.water_tank > 0 and self.grid[p] == 2:
+                    self.grid[p] = 0
+                    self.water_tank = max(0, self.water_tank - 1)
+                    reward += 10
+                    extinguishes += 1
+            if extinguishes == 0:
+                reward -= 1  # penalty for invalid extinguish
+        
+        # Wait / Recharge
+        elif action == 6:
+            positions = self.agent_positions if self.num_agents > 1 else [self.agent_pos]
+            # Faster recovery if any agent is on river row
+            if any(p[0] == self.river_row for p in positions):
                 if self.water_tank < self.max_water:
-                    reward += 2  # Bonus for reaching water source
+                    reward += 2
                 self.water_tank = self.max_water
             else:
-                # Regular recovery
                 self.water_tank = min(self.water_tank + 2, self.max_water)
         
         # Fire spread phase (stochastic)
@@ -204,9 +238,14 @@ class ForestFireEnv(gym.Env):
             
             # Create a visual representation
             visual = self.grid.copy()
-            visual[self.agent_pos] = 3
+            if self.num_agents == 1:
+                visual[self.agent_pos] = 3
+            else:
+                a1, a2 = self.agent_positions
+                visual[a1] = 3
+                visual[a2] = 4
             
-            symbols = {0: '·', 1: '🌲', 2: '🔥', 3: '🤖'}
+            symbols = {0: '·', 1: '🌲', 2: '🔥', 3: 'A', 4: 'B'}
             for row in visual:
                 print(' '.join([symbols.get(cell, str(cell)) for cell in row]))
             
@@ -214,28 +253,94 @@ class ForestFireEnv(gym.Env):
         
         return None
     
-    def render_matplotlib(self, ax=None):
-        """Render the environment using matplotlib."""
+    def render_matplotlib(self, ax=None, agent_acting=None):
+        """Render the environment using matplotlib.
+        
+        Args:
+            ax: matplotlib axis
+            agent_acting: 'navegador' or 'operario' to highlight active agent
+        """
         if ax is None:
             fig, ax = plt.subplots(figsize=(8, 8))
         
-        # Create color map
-        # 0=Empty (white), 1=Tree (green), 2=Fire (red), 3=Agent (blue)
+        from matplotlib.colors import ListedColormap
+        
+        # Create color map: white, green, red, blue, orange
+        # 0=Empty/Burned (white), 1=Tree (green), 2=Fire (red), 3=Navegador (blue), 4=Operario (orange)
         display_grid = self.grid.copy()
-        display_grid[self.agent_pos] = 3
+        if self.num_agents == 1:
+            display_grid[self.agent_pos] = 3
+        else:
+            a1, a2 = self.agent_positions
+            display_grid[a1] = 3
+            display_grid[a2] = 4
         
-        colors = np.zeros((self.grid_size, self.grid_size, 3))
-        colors[display_grid == 0] = [1, 1, 1]      # White for empty
-        colors[display_grid == 1] = [0, 0.7, 0]    # Green for trees
-        colors[display_grid == 2] = [1, 0, 0]      # Red for fire
-        colors[display_grid == 3] = [0, 0, 1]      # Blue for agent
+        cmap = ListedColormap(['white', 'green', 'red', 'blue', 'orange'])
+        colors = cmap(display_grid)
         
-        ax.imshow(colors, interpolation='nearest')
-        ax.grid(True, which='both', color='black', linewidth=0.5)
+        ax.imshow(display_grid, interpolation='nearest', cmap=cmap, vmin=0, vmax=4)
+        ax.grid(True, which='both', color='gray', linewidth=0.5, alpha=0.3)
         ax.set_xticks(np.arange(-0.5, self.grid_size, 1))
         ax.set_yticks(np.arange(-0.5, self.grid_size, 1))
         ax.set_xticklabels([])
         ax.set_yticklabels([])
-        ax.set_title(f'Step: {self.step_count} | Trees: {np.sum(self.grid == 1)} | Fires: {np.sum(self.grid == 2)}')
+        
+        title = f'Step: {self.step_count} | Trees: {np.sum(self.grid == 1)} | Fires: {np.sum(self.grid == 2)} | Water: {self.water_tank}/{self.max_water}'
+        if agent_acting:
+            title = f'{title}\nActing: {agent_acting.upper()}'
+        ax.set_title(title)
         
         return ax
+
+    def render_animation(self, frames, agent_labels=None, filename='forest_fire_animation.gif', fps=5):
+        """Create and save an animation (GIF or MP4) from a list of grid frames.
+
+        Args:
+            frames: list of np.ndarray grids over time
+            agent_labels: list of agent names per frame (e.g., ['navegador', 'operario', ...])
+            filename: output file path, .gif or .mp4
+            fps: frames per second
+        """
+        from matplotlib.colors import ListedColormap
+        
+        fig, ax = plt.subplots(figsize=(7, 7))
+        cmap = ListedColormap(['white', 'green', 'red', 'blue', 'orange'])
+
+        im = ax.imshow(frames[0], interpolation='nearest', cmap=cmap, vmin=0, vmax=4)
+        ax.grid(True, which='both', color='gray', linewidth=0.5, alpha=0.3)
+        ax.set_xticks(np.arange(-0.5, self.grid_size, 1))
+        ax.set_yticks(np.arange(-0.5, self.grid_size, 1))
+        ax.set_xticklabels([])
+        ax.set_yticklabels([])
+        title_text = ax.set_title('Forest Fire - Step 0')
+
+        def update(i):
+            im.set_data(frames[i])
+            label = ''
+            if agent_labels and i < len(agent_labels):
+                label = f' | Acting: {agent_labels[i].upper()}'
+            title_text.set_text(f'Forest Fire - Step {i}{label}')
+            return [im, title_text]
+
+        anim = animation.FuncAnimation(fig, update, frames=len(frames), interval=1000//max(1, fps), blit=True)
+
+        try:
+            if filename.endswith('.mp4'):
+                writer = animation.FFMpegWriter(fps=fps)
+                anim.save(filename, writer=writer)
+            else:
+                writer = animation.PillowWriter(fps=fps)
+                anim.save(filename, writer=writer)
+            print(f"Animation saved to '{filename}'")
+        except Exception as e:
+            # Fallback to GIF if MP4 fails
+            print(f"Failed to save animation to {filename}: {e}\nAttempting GIF fallback...")
+            try:
+                gif_name = filename.rsplit('.', 1)[0] + '.gif'
+                writer = animation.PillowWriter(fps=fps)
+                anim.save(gif_name, writer=writer)
+                print(f"Animation saved to '{gif_name}'")
+            except Exception as e2:
+                print(f"Failed to save GIF animation: {e2}")
+        finally:
+            plt.close(fig)
