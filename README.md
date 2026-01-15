@@ -1,116 +1,100 @@
-# Forest Guardian RL
+# Forest Guardian RL 🌲🔥
 
-Ejercicio Máster - Entorno de Aprendizaje por Refuerzo para combatir incendios forestales.
+Sistema jerárquico de control para extinción de incendios forestales usando Reinforcement Learning.
 
-## Descripción
+## Estructura del Proyecto
 
-Este proyecto implementa un entorno personalizado de Gymnasium para entrenar agentes de RL que aprendan a gestionar incendios forestales. El agente debe moverse por un bosque de 20x20, extinguir incendios y prevenir la destrucción del bosque.
+### Archivos Principales
 
-### Características del Entorno
+- **`train_and_test.py`**: Pipeline completo de entrenamiento y generación de GIF
+  - Entrena modelo PPO (Navegador)
+  - Prueba arquitectura jerárquica
+  - Genera GIF automáticamente
 
-- **Grid**: 20x20 celdas
-- **Estados**:
-  - 0 = Vacío (celda quemada)
-  - 1 = Árbol
-  - 2 = Fuego
-  - 3 = Agente
+- **`forest_fire_env.py`**: Entorno Gymnasium personalizado
+  - Grid 20x20
+  - Fuego se propaga cada 15 pasos (lento)
+  - Árboles tardan 8 ciclos (120 pasos) en quemarse
+  - Sistema de agua/recargas
 
-- **Espacio de Acciones** (Discrete(7)):
-  - 0: Mover arriba
-  - 1: Mover abajo
-  - 2: Mover izquierda
-  - 3: Mover derecha
-  - 4: Talar árbol
-  - 5: Apagar fuego
-  - 6: Esperar
+- **`requirements.txt`**: Dependencias necesarias
 
-- **Sistema de Recompensas**:
-  - +10: Apagar un fuego
-  - -0.1: Por cada fuego activo en cada paso
-  - -100: Si el bosque es destruido (>80% de árboles perdidos)
-  - +50: Bonus por extinguir todos los incendios
+### Carpetas
 
-- **Mecánica de Fuego**:
-  - El fuego se expande estocásticamente a árboles vecinos
-  - Probabilidad de expansión: 60% por defecto
-  - Los fuegos se apagan después de expandirse (simulando consumo)
-
-## Instalación
-
-```bash
-pip install -r requirements.txt
-```
+- **`GIF/`**: Contiene los GIFs generados automáticamente
 
 ## Uso
 
-### 1. Demo Rápido (Sin Entrenamiento)
-
-Ejecuta una demostración con política aleatoria para ver el entorno en acción:
-
-```bash
-python demo.py
-```
-
-### 2. Validar el Entorno
-
-Ejecuta el script de prueba para verificar que el entorno funciona correctamente:
-
-```bash
-python test_env.py
-```
-
-### 3. Entrenar y Probar el Agente
-
-Entrena un agente PPO durante 20,000 pasos y visualiza los resultados:
+### Entrenar y Generar GIF
 
 ```bash
 python train_and_test.py
 ```
 
-Este script:
-1. Crea el entorno ForestFireEnv
-2. Entrena un agente PPO durante 20,000 timesteps
-3. Guarda el modelo entrenado
-4. Ejecuta 5 episodios de prueba
-5. Genera visualizaciones con matplotlib
+Esto ejecutará:
+1. **Entrenamiento**: PPO se entrena durante 50,000 pasos
+2. **Testing**: Evalúa el modelo en 3 episodios
+3. **Visualización**: Muestra un episodio dual-agent
+4. **GIF**: Genera automáticamente un GIF en `GIF/forest_fire_training_v*.gif`
 
-### Archivos Generados
+## Arquitectura Jerárquica
 
-Después del entrenamiento:
-- `ppo_forest_fire.zip`: Modelo entrenado
-- `forest_fire_visualization.png`: Visualización de un episodio completo
-- `training_progress.png`: Gráfico de progreso del entrenamiento (si disponible)
+### Componentes
 
-## Estructura del Proyecto
+1. **Navegador (PPO Neural Network)**
+   - Red neuronal entrenada con PPO
+   - Control estratégico del movimiento
+   - Busca y se acerca a los fuegos
+
+2. **Operario (Reglas)**
+   - Sistema basado en reglas
+   - Decisiones críticas:
+     - Sin agua → recargar
+     - Fuego adyacente + agua → extinguir
+     - Crear cortafuegos
+
+3. **Manager**
+   - Controlador jerárquico
+   - Arbitrador entre Navegador y Operario
+   - Bloquea acciones inválidas
+
+## Visualización del GIF
+
+- **Blanco**: Vacío/Quemado
+- **Verde**: Árboles
+- **Rojo**: Fuego
+- **Azul**: Agente (Navegador controlando)
+- **Naranja**: Agente (Operario controlando)
+
+## Parámetros Clave
+
+| Parámetro | Valor | Descripción |
+|-----------|-------|-------------|
+| Grid Size | 20x20 | Tamaño del entorno |
+| Fire Spread Interval | 15 pasos | Frecuencia de propagación del fuego |
+| Fire Burnout Age | 8 ciclos | Ciclos hasta que el fuego se apaga |
+| Initial Fires | 3 | Incendios iniciales |
+| Water Tank | 10 | Capacidad de agua |
+
+## Salida Esperada
 
 ```
-forestGuardianRL/
-├── forest_fire_env.py    # Implementación del entorno Gymnasium
-├── train_and_test.py     # Script de entrenamiento y prueba
-├── test_env.py           # Script de validación del entorno
-├── demo.py               # Demo con política aleatoria
-├── requirements.txt      # Dependencias del proyecto
-├── .gitignore           # Archivos ignorados por git
-└── README.md            # Este archivo
+✓ Modelo entrenado: ppo_forest_fire.zip
+✓ GIF generado: GIF/forest_fire_training_v1.gif
+✓ Frames: ~100
+✓ Duración: ~20 segundos
 ```
 
-## Requisitos
+## Información de Ejecución
 
-- Python 3.8+
-- gymnasium >= 0.29.0
-- stable-baselines3 >= 2.0.0
-- matplotlib >= 3.5.0
-- numpy >= 1.21.0
+- **Tiempo de entrenamiento**: ~2-3 minutos
+- **GPU/CPU**: CPU es suficiente
+- **RAM mínimo**: 2GB
+- **Dependencias**: gymnasium, stable-baselines3, numpy, matplotlib
 
-## Personalización
+## Modificaciones Recientes
 
-Puedes ajustar los parámetros del entorno al crear la instancia:
-
-```python
-env = ForestFireEnv(
-  grid_size=20,              # Tamaño del grid
-  fire_spread_prob=0.6,      # Probabilidad de expansión del fuego
-    initial_trees=0.6,         # Proporción inicial de árboles
-    initial_fires=3            # Número de fuegos iniciales
-)
-```
+- ✅ Fuego se propaga cada **15 pasos** (antes 5)
+- ✅ Árboles tardan **8 ciclos** en quemarse (antes 3)
+- ✅ GIF se genera **automáticamente** al final de train_and_test.py
+- ✅ Proyecto simplificado (solo archivos esenciales)

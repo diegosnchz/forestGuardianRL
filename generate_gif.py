@@ -160,7 +160,7 @@ def main():
     
     # Create single-agent environment (color changes based on who decides)
     print("Creando entorno...")
-    vis_env = ForestFireEnv(grid_size=20, num_agents=1)
+    vis_env = ForestFireEnv(grid_size=20, num_agents=1, fire_spread_prob=0.3, initial_trees=0.5, initial_fires=3)
     obs, info = vis_env.reset()
     print("✓ Entorno creado")
     print("  (El agente cambia de color según quién decide:)")
