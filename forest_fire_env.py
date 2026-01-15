@@ -99,8 +99,7 @@ class ForestFireEnv(gym.Env):
         terminated = False
         truncated = False
         
-        # Save agent's current position
-        current_pos = self.agent_pos
+        # Save agent's current position (not used currently)
         
         # Execute action
         if action == 0:  # Move up
@@ -126,18 +125,19 @@ class ForestFireEnv(gym.Env):
                     self.water_tank -= 1
                     reward += 10  # Big reward for extinguishing fire
             else:
-            # Faster recovery if in River zone (row 0)
-            if self.agent_pos[0] == self.river_row:
-                # River zone: full refill
-                self.water_tank = self.max_water
-                reward += 2  # Bonus for reaching water source
-            else:
-                # Regular recovery
-                    # Penalty for trying to extinguish without water
+                # Penalty for trying to extinguish without water
                 reward -= 1
         elif action == 6:  # Wait
             # Recover water during wait (recharge)
-            self.water_tank = min(self.water_tank + 2, self.max_water)
+            # Faster recovery if in River zone (row 0)
+            if self.agent_pos[0] == self.river_row:
+                # River zone: full refill
+                if self.water_tank < self.max_water:
+                    reward += 2  # Bonus for reaching water source
+                self.water_tank = self.max_water
+            else:
+                # Regular recovery
+                self.water_tank = min(self.water_tank + 2, self.max_water)
         
         # Fire spread phase (stochastic)
         fire_positions = np.argwhere(self.grid == 2)
