@@ -279,7 +279,6 @@ def main():
     vis_env.render_animation(
         frames, 
         agent_labels=agent_labels,
-        agent_positions=agent_positions,
         filename=gif_filename, 
         fps=5
     )
