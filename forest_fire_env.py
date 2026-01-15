@@ -15,13 +15,21 @@ class ForestFireEnv(gym.Env):
     
     metadata = {'render_modes': ['human', 'rgb_array']}
     
-    def __init__(self, grid_size=10, fire_spread_prob=0.3, initial_trees=0.6, initial_fires=3):
+    def __init__(self, grid_size=10, fire_spread_prob=0.5, initial_trees=0.6, initial_fires=3):
         super(ForestFireEnv, self).__init__()
         
         self.grid_size = grid_size
         self.fire_spread_prob = fire_spread_prob
         self.initial_trees = initial_trees
         self.initial_fires = initial_fires
+        
+        # Water management system
+        self.water_tank = 10
+        self.max_water = 10
+        
+        # River zone: Row 0 is a water source (River/Base)
+        # Agent can refill water faster here
+        self.river_row = 0
         
         # Action space: 7 discrete actions
         # 0: Move up, 1: Move down, 2: Move left, 3: Move right
@@ -59,7 +67,10 @@ class ForestFireEnv(gym.Env):
         else:
             self.agent_pos = (0, 0)
         
-        # Place initial fires randomly on trees (not where agent is)
+        # Clear river zone (row 0) from trees to make it accessible for water refills
+        self.grid[self.river_row, :] = 0
+        
+        # Place initial fires randomly on trees (not where agent is, and not in river zone)
         tree_positions = np.argwhere(self.grid == 1)
         tree_positions = [tuple(pos) for pos in tree_positions if tuple(pos) != self.agent_pos]
         
@@ -69,6 +80,8 @@ class ForestFireEnv(gym.Env):
                 fire_pos = tree_positions[idx]
                 self.grid[fire_pos] = 2
         
+        # Reset water tank
+        self.water_tank = self.max_water
         self.step_count = 0
         
         return self._get_obs(), {}
@@ -107,11 +120,24 @@ class ForestFireEnv(gym.Env):
                 self.grid[self.agent_pos] = 0
                 reward += 1  # Small reward for cutting
         elif action == 5:  # Extinguish fire
-            if self.grid[self.agent_pos] == 2:
-                self.grid[self.agent_pos] = 0
-                reward += 10  # Big reward for extinguishing fire
+            if self.water_tank > 0:
+                if self.grid[self.agent_pos] == 2:
+                    self.grid[self.agent_pos] = 0
+                    self.water_tank -= 1
+                    reward += 10  # Big reward for extinguishing fire
+            else:
+            # Faster recovery if in River zone (row 0)
+            if self.agent_pos[0] == self.river_row:
+                # River zone: full refill
+                self.water_tank = self.max_water
+                reward += 2  # Bonus for reaching water source
+            else:
+                # Regular recovery
+                    # Penalty for trying to extinguish without water
+                reward -= 1
         elif action == 6:  # Wait
-            pass
+            # Recover water during wait (recharge)
+            self.water_tank = min(self.water_tank + 2, self.max_water)
         
         # Fire spread phase (stochastic)
         fire_positions = np.argwhere(self.grid == 2)
@@ -174,6 +200,7 @@ class ForestFireEnv(gym.Env):
         if mode == 'human':
             print(f"\nStep: {self.step_count}")
             print(f"Agent position: {self.agent_pos}")
+            print(f"Water level: {self.water_tank}/{self.max_water}")
             
             # Create a visual representation
             visual = self.grid.copy()
