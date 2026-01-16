@@ -5,17 +5,32 @@ import time
 from forest_fire_env import ForestFireEnv
 
 class TerminatorAgent:
+    def __init__(self, role="nearest"):
+        self.role = role # 'nearest' o 'farthest'
+
     def decide(self, obs, pos):
         r, c = pos
         fires = np.argwhere(obs == 2)
         
         if len(fires) == 0: return 6
         
-        # Buscar fuego más cercano
+        # Calcular distancias a todos los fuegos
         dists = [abs(r-fr) + abs(c-fc) for fr, fc in fires]
-        nearest_idx = np.argmin(dists)
-        target_r, target_c = fires[nearest_idx]
-        dist = dists[nearest_idx]
+        
+        # ESTRATEGIA DE EQUIPO:
+        if self.role == "nearest":
+            # El azul va al más cercano
+            target_idx = np.argmin(dists)
+        else:
+            # El naranja intenta ir al más lejano (para rodear)
+            # Pero si solo hay 1 fuego, va a ese.
+            if len(fires) > 1:
+                target_idx = np.argmax(dists)
+            else:
+                target_idx = np.argmin(dists)
+
+        target_r, target_c = fires[target_idx]
+        dist = dists[target_idx]
         
         # Disparar si estoy al lado
         if dist <= 1: 
@@ -32,16 +47,16 @@ class TerminatorAgent:
 
 def make_the_gif():
     print("="*60)
-    print("GENERANDO NUEVA DEMO ESTOCÁSTICA")
+    print("GENERANDO DEMO ESTOCÁSTICA (SIN SUPERPOSICIÓN)")
     print("="*60)
     
-    # Entorno 10x10 aleatorio
-    # initial_fires=3 para que haya varios focos aleatorios
+    # Entorno aleatorio
     env = ForestFireEnv(grid_size=10, num_agents=2, initial_fires=3) 
     obs, _ = env.reset()
     
-    agent_blue = TerminatorAgent()
-    agent_orange = TerminatorAgent()
+    # ASIGNAMOS ROLES PARA QUE NO SE PISEN
+    agent_blue = TerminatorAgent(role="nearest")
+    agent_orange = TerminatorAgent(role="farthest")
     
     frames = []
     frames.append(env._get_obs().copy())
@@ -50,7 +65,7 @@ def make_the_gif():
     step = 0
     max_steps = 80
     
-    print(">>> Simulando partida aleatoria...")
+    print(">>> Simulando partida cooperativa...")
     while not done and step < max_steps:
         # Decidir acciones
         act_blue = agent_blue.decide(obs, env.agent_positions[0])
@@ -69,7 +84,7 @@ def make_the_gif():
 
     print(f"\n>>> Generando GIF único...")
     
-    # Nombre único basado en el tiempo para no sobrescribir
+    # Nombre único basado en el tiempo
     timestamp = int(time.time())
     filename = f'forest_fire_demo_{timestamp}.gif'
     

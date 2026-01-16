@@ -19,7 +19,7 @@ class ForestFireEnv(gym.Env):
         self.initial_fires = initial_fires
         self.num_agents = num_agents
         
-        # AGUA INFINITA (Mantenemos el truco)
+        # AGUA INFINITA
         self.water_tanks = [999] * num_agents
         self.max_water = 999
         self.river_row = 0
@@ -45,19 +45,17 @@ class ForestFireEnv(gym.Env):
             r = self.np_random.integers(0, self.grid_size)
             c = self.np_random.integers(0, self.grid_size)
             
-            # Evitar poner un agente encima de otro
             if (r,c) not in self.agent_positions:
                 self.agent_positions.append((r,c))
             attempts += 1
             
-        # 3. Colocar Fuego Aleatorio (lejos de los agentes para dar emoción)
+        # 3. Colocar Fuego Aleatorio
         fires_placed = 0
         attempts = 0
         while fires_placed < self.initial_fires and attempts < 200:
             r = self.np_random.integers(1, self.grid_size-1)
             c = self.np_random.integers(1, self.grid_size-1)
             
-            # Solo poner fuego si hay árbol y no hay agente
             if self.grid[r,c] == 1 and (r,c) not in self.agent_positions:
                 self.grid[r,c] = 2
                 fires_placed += 1
@@ -83,13 +81,27 @@ class ForestFireEnv(gym.Env):
         # 1. Acciones Agentes
         for i, action in enumerate(actions):
             r, c = self.agent_positions[i]
+            old_r, old_c = r, c
             
-            # Movimiento
+            # Movimiento propuesto
             if action == 0: r = max(0, r-1)
             elif action == 1: r = min(self.grid_size-1, r+1)
             elif action == 2: c = max(0, c-1)
             elif action == 3: c = min(self.grid_size-1, c+1)
             
+            # --- FÍSICA DE COLISIONES (NUEVO) ---
+            # Verificar si la casilla destino está ocupada por OTRO agente
+            collision = False
+            for j, other_pos in enumerate(self.agent_positions):
+                if i != j and (r, c) == other_pos:
+                    collision = True
+                    break
+            
+            if collision:
+                # Si hay choque, se queda en su sitio
+                r, c = old_r, old_c
+            
+            # Actualizar posición definitiva
             self.agent_positions[i] = (r, c)
             
             # Acción 5: APAGAR (Radio 3x3)
