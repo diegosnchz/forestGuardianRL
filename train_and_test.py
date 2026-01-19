@@ -7,29 +7,66 @@ from forest_fire_env import ForestFireEnv
 
 # --- CEREBROS TÁCTICOS ---
 class TerminatorAgent:
+    """
+    Agente táctico con estrategias especializadas.
+    
+    Roles:
+    - nearest: Ataque directo al fuego más cercano (UNIDAD ALPHA)
+    - farthest: Contención periférica de fuegos lejanos (UNIDAD BRAVO)
+    - firebreak: Cortafuegos preventivo (UNIDAD GAMMA) - NUEVO
+    """
     def __init__(self, role="nearest"):
         self.role = role 
 
     def decide(self, obs, pos):
         r, c = pos
-        fires = np.argwhere(obs == 2)
-        if len(fires) == 0: return 6
         
-        dists = [abs(r-fr) + abs(c-fc) for fr, fc in fires]
-        
-        if self.role == "nearest":
-            target_idx = np.argmin(dists)
+        # Extraer grid si obs es dict (nuevo formato)
+        if isinstance(obs, dict):
+            grid = obs['grid']
         else:
+            grid = obs
+        
+        fires = np.argwhere(grid == 2)
+        
+        # Si no hay fuegos, idle
+        if len(fires) == 0:
+            return 4  # Idle
+        
+        dists = [abs(r - fr) + abs(c - fc) for fr, fc in fires]
+        
+        # ESTRATEGIA SEGÚN ROL
+        if self.role == "nearest":
+            # UNIDAD ALPHA: Ataque rápido al fuego más cercano
+            target_idx = np.argmin(dists)
+        
+        elif self.role == "farthest":
+            # UNIDAD BRAVO: Contención de fuegos distantes
             if len(fires) > 1:
                 target_idx = np.argmax(dists)
             else:
                 target_idx = np.argmin(dists)
-
+        
+        elif self.role == "firebreak":
+            # UNIDAD GAMMA (NUEVO): Estrategia de cortafuegos preventivo
+            # Busca la zona con más árboles cerca del fuego para crear barrera
+            target_idx = self._find_firebreak_target(grid, fires, pos)
+        
+        else:
+            target_idx = np.argmin(dists)
+        
         target_r, target_c = fires[target_idx]
         dist = dists[target_idx]
         
-        if dist <= 1: return 5
+        # Si está en rango, decidir acción según rol
+        if dist <= 1:
+            if self.role == "firebreak":
+                # Crear cortafuegos en lugar de apagar
+                return 6  # Acción cortafuegos
+            else:
+                return 5  # Apagar fuego
         
+        # Moverse hacia el objetivo
         diff_r = target_r - r
         diff_c = target_c - c
         
@@ -37,6 +74,48 @@ class TerminatorAgent:
             return 1 if diff_r > 0 else 0
         else:
             return 3 if diff_c > 0 else 2
+    
+    def _find_firebreak_target(self, grid, fires, pos):
+        """
+        Encuentra el mejor lugar para crear un cortafuegos.
+        Busca zonas con árboles entre el agente y el fuego más cercano.
+        """
+        r, c = pos
+        
+        if len(fires) == 0:
+            return 0
+        
+        # Calcular distancias a todos los fuegos
+        dists = [abs(r - fr) + abs(c - fc) for fr, fc in fires]
+        
+        # Encontrar fuegos cercanos (dentro de radio 5)
+        nearby_fires = [(i, d) for i, d in enumerate(dists) if d <= 5]
+        
+        if not nearby_fires:
+            # Si no hay fuegos cercanos, ir al más cercano
+            return np.argmin(dists)
+        
+        # De los fuegos cercanos, elegir el que tiene más árboles en su perímetro
+        max_trees = -1
+        best_target = nearby_fires[0][0]
+        
+        for fire_idx, _ in nearby_fires:
+            fr, fc = fires[fire_idx]
+            trees_nearby = 0
+            
+            # Contar árboles en radio 2 del fuego
+            for dr in range(-2, 3):
+                for dc in range(-2, 3):
+                    nr, nc = fr + dr, fc + dc
+                    if 0 <= nr < grid.shape[0] and 0 <= nc < grid.shape[1]:
+                        if grid[nr, nc] == 1:
+                            trees_nearby += 1
+            
+            if trees_nearby > max_trees:
+                max_trees = trees_nearby
+                best_target = fire_idx
+        
+        return best_target
 
 # --- GENERADOR DE INFORME TÁCTICO (LA CLAVE DEL PROYECTO) ---
 def generate_tactical_report(gif_path, stats):
@@ -117,6 +196,9 @@ def generate_tactical_report(gif_path, stats):
                         
                         <p><strong class="agent-orange">UNIDAD BRAVO (NARANJA):</strong> Dron de Contención Pesada. <br>
                         <em>Algoritmo:</em> Envolvimiento Táctico. Ataca focos perimetrales para cortar el avance.</p>
+                        
+                        <p><strong style="color: #aa44ff;">UNIDAD GAMMA (MORADO):</strong> Dron Cortafuegos Preventivo. <br>
+                        <em>Algoritmo:</em> Creación de Barreras. Remueve árboles estratégicamente para cortar la propagación.</p>
                     </div>
                 </div>
             </div>
@@ -143,42 +225,68 @@ def make_the_magic():
     print("INICIANDO PROTOCOLO DE EMERGENCIA FORESTAL")
     print("="*60)
     
-    # 1. Configuración del entorno (Datos reales simulados)
-    env = ForestFireEnv(grid_size=10, num_agents=2, initial_fires=3) 
+    # 1. Configuración del entorno con 3 agentes y clima real
+    env = ForestFireEnv(
+        grid_size=10, 
+        num_agents=3,  # 3 agentes ahora
+        initial_fires=3,
+        use_real_weather=True,
+        location_lat=40.4168,  # Madrid como ejemplo
+        location_lon=-3.7038
+    ) 
     obs, _ = env.reset()
     
     # Cálculo de árboles iniciales para estadísticas
     initial_trees = np.sum(env.grid == 1)
     
-    agent_blue = TerminatorAgent(role="nearest")
-    agent_orange = TerminatorAgent(role="farthest")
+    # Información del viento
+    wind_info = env.get_wind_info()
+    print(f">>> Condiciones meteorológicas: Viento {wind_info['speed']:.1f} km/h, dirección {wind_info['direction']:.0f}°")
+    
+    # 3 AGENTES CON ROLES ESPECÍFICOS
+    agent_alpha = TerminatorAgent(role="nearest")    # Azul - Ataque rápido
+    agent_bravo = TerminatorAgent(role="farthest")   # Naranja - Contención perimetral
+    agent_gamma = TerminatorAgent(role="firebreak")  # Morado - Cortafuegos preventivo
     
     frames = []
-    frames.append(env._get_obs().copy())
+    
+    # Extraer grid si obs es dict
+    if isinstance(obs, dict):
+        frames.append(obs['grid'].copy())
+    else:
+        frames.append(obs.copy())
     
     done = False
     step = 0
     max_steps = 100
     
-    print(">>> Desplegando drones (Simulación en curso)...")
+    print(">>> Desplegando 3 drones (Simulación en curso)...")
     while not done and step < max_steps:
-        # Decisión IA
-        act_blue = agent_blue.decide(obs, env.agent_positions[0])
-        act_orange = agent_orange.decide(obs, env.agent_positions[1])
+        # Decisión IA de los 3 agentes
+        act_alpha = agent_alpha.decide(obs, env.agent_positions[0])
+        act_bravo = agent_bravo.decide(obs, env.agent_positions[1])
+        act_gamma = agent_gamma.decide(obs, env.agent_positions[2])
         
         # Acción Física
-        obs, _, terminated, _, _ = env.step([act_blue, act_orange])
+        obs, _, terminated, _, _ = env.step([act_alpha, act_bravo, act_gamma])
         
-        frames.append(env._get_obs().copy())
+        # Guardar frame
+        if isinstance(obs, dict):
+            frames.append(obs['grid'].copy())
+        else:
+            frames.append(obs.copy())
+        
         done = terminated
         step += 1
         
         if step % 5 == 0:
-            fuegos = np.sum(obs==2)
+            grid = obs['grid'] if isinstance(obs, dict) else obs
+            fuegos = np.sum(grid == 2)
             print(f"   [TIEMPO REAL: +{step}m] Radar detecta {fuegos} focos activos.")
 
     # 2. Recopilar estadísticas para el informe
-    final_trees = np.sum(obs == 1)
+    grid = obs['grid'] if isinstance(obs, dict) else obs
+    final_trees = np.sum(grid == 1)
     trees_saved_pct = round((final_trees / initial_trees) * 100, 1) if initial_trees > 0 else 0
     
     stats = {
@@ -202,6 +310,7 @@ def make_the_magic():
     print("\n" + "="*60)
     print("MISIÓN COMPLETADA CON ÉXITO")
     print("="*60)
+    print(f"Información meteorológica: {wind_info}")
     print(f"Para entender la aplicabilidad real, abre este archivo:")
     print(f"{report_path}")
     print("="*60)

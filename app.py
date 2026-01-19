@@ -1,11 +1,22 @@
 import streamlit as st
 import numpy as np
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 import time
 from forest_fire_env import ForestFireEnv
 from train_and_test import TerminatorAgent
 import pandas as pd
+from gis_locations import BOSQUES_REALES, ESCENARIOS_REALES
+from forest_fire_gis import ForestFireGISEnv
+from gis_visualization import MapaForestGuardian
+from visualization import (
+    create_heatmap_figure,
+    create_metrics_timeseries,
+    create_agent_positions_chart,
+    create_summary_metrics
+)
+try:
+    from streamlit_folium import st_folium
+except ImportError:
+    st_folium = None
 
 # ============================================================================
 # CONFIGURACIÓN DE STREAMLIT
@@ -69,102 +80,19 @@ if 'metrics_history' not in st.session_state:
     }
 if 'initial_trees_count' not in st.session_state:
     st.session_state.initial_trees_count = 0
+if 'simulation_mode' not in st.session_state:
+    st.session_state.simulation_mode = 'grid_aleatorio'
+if 'selected_bosque' not in st.session_state:
+    st.session_state.selected_bosque = None
+if 'gis_scenario' not in st.session_state:
+    st.session_state.gis_scenario = None
 
 # ============================================================================
 # FUNCIONES AUXILIARES
 # ============================================================================
 
-def create_grid_figure(obs, step):
-    """Crea una visualización Plotly del grid actual"""
-    # Colores: 0=blanco (vacío), 1=verde (árbol), 2=rojo (fuego), 3=azul (agente1), 4=naranja (agente2)
-    custom_colorscale = [
-        [0.0, '#ffffff'],   # vacío
-        [0.25, '#00aa00'],  # árbol
-        [0.5, '#ff0000'],   # fuego
-        [0.75, '#0066ff'],  # agente azul
-        [1.0, '#ff9900']    # agente naranja
-    ]
-    
-    fig = go.Figure(
-        data=go.Heatmap(
-            z=obs,
-            colorscale=custom_colorscale,
-            zmin=0,
-            zmax=4,
-            showscale=False,
-            hovertemplate='Posición: (%{x}, %{y})<br>Estado: %{z}<extra></extra>'
-        )
-    )
-    
-    fig.update_layout(
-        title=f"Visualización del Bosque - Paso {step}",
-        xaxis_title="Eje X",
-        yaxis_title="Eje Y",
-        height=500,
-        hovermode='closest',
-        xaxis=dict(scaleanchor="y", scaleratio=1),
-        yaxis=dict(scaleanchor="x", scaleratio=1),
-        plot_bgcolor='#f0f0f0'
-    )
-    
-    return fig
-
-def create_metrics_dashboard(metrics_history):
-    """Crea gráficos de métricas a lo largo del tiempo"""
-    if not metrics_history['step']:
-        return None
-    
-    fig = make_subplots(
-        rows=2, cols=2,
-        subplot_titles=("Fuegos Activos", "Árboles Salvados", "Agua Consumida", "Densidad de Bosque"),
-        specs=[[{"type": "scatter"}, {"type": "scatter"}],
-               [{"type": "scatter"}, {"type": "scatter"}]]
-    )
-    
-    steps = metrics_history['step']
-    
-    # Fuegos activos
-    fig.add_trace(
-        go.Scatter(x=steps, y=metrics_history['active_fires'], 
-                   mode='lines+markers', name='Fuegos', line=dict(color='red', width=2)),
-        row=1, col=1
-    )
-    
-    # Árboles salvados
-    fig.add_trace(
-        go.Scatter(x=steps, y=metrics_history['saved_trees'], 
-                   mode='lines+markers', name='Árboles Salvados', line=dict(color='green', width=2)),
-        row=1, col=2
-    )
-    
-    # Agua consumida
-    fig.add_trace(
-        go.Scatter(x=steps, y=metrics_history['water_used'], 
-                   mode='lines', name='Agua Consumida', line=dict(color='blue', width=2)),
-        row=2, col=1
-    )
-    
-    # Densidad de bosque (árboles/total celdas)
-    density = [t/100 for t in metrics_history['saved_trees']]
-    fig.add_trace(
-        go.Scatter(x=steps, y=density, 
-                   mode='lines+markers', name='Densidad Bosque', line=dict(color='purple', width=2)),
-        row=2, col=2
-    )
-    
-    fig.update_xaxes(title_text="Paso de Simulación", row=1, col=1)
-    fig.update_xaxes(title_text="Paso de Simulación", row=1, col=2)
-    fig.update_xaxes(title_text="Paso de Simulación", row=2, col=1)
-    fig.update_xaxes(title_text="Paso de Simulación", row=2, col=2)
-    
-    fig.update_yaxes(title_text="Conteo", row=1, col=1)
-    fig.update_yaxes(title_text="% Salvado", row=1, col=2)
-    fig.update_yaxes(title_text="Unidades", row=2, col=1)
-    fig.update_yaxes(title_text="Ratio", row=2, col=2)
-    
-    fig.update_layout(height=600, showlegend=True, hovermode='x unified')
-    
-    return fig
+# Funciones auxiliares ahora importadas de visualization.py
+# create_heatmap_figure, create_metrics_timeseries, create_agent_positions_chart
 
 def run_mission(env, num_agents, max_steps=100):
     """Ejecuta la misión y actualiza métricas en tiempo real"""
@@ -236,12 +164,15 @@ def run_mission(env, num_agents, max_steps=100):
         
         # Actualizar grid
         with placeholder_grid.container():
-            fig_grid = create_grid_figure(obs, step)
+            fig_grid = create_heatmap_figure(obs, step, "Estado del Bosque")
             st.plotly_chart(fig_grid, use_container_width=True)
         
         # Actualizar gráficos de métricas
         with placeholder_metrics.container():
-            fig_metrics = create_metrics_dashboard(st.session_state.metrics_history)
+            fig_metrics = create_metrics_timeseries(
+                st.session_state.metrics_history,
+                include_density=True
+            )
             if fig_metrics:
                 st.plotly_chart(fig_metrics, use_container_width=True)
         
@@ -258,6 +189,46 @@ def run_mission(env, num_agents, max_steps=100):
         else:
             st.warning(f"⏱️ Misión completada por tiempo máximo ({max_steps} pasos)")
     
+    # Mostrar resumen final con visualization.py
+    st.markdown("---")
+    st.subheader("📊 Resumen de la Misión")
+    
+    col_sum1, col_sum2 = st.columns(2)
+    
+    with col_sum1:
+        # Crear resumen de métricas usando visualization.py
+        final_trees = np.sum(obs == 1)
+        trees_saved_pct = (final_trees / st.session_state.initial_trees_count * 100) if st.session_state.initial_trees_count > 0 else 0
+        fires_extinguished = st.session_state.metrics_history['active_fires'][0] if st.session_state.metrics_history['active_fires'] else 0
+        
+        summary = create_summary_metrics(
+            steps=step,
+            trees_saved_pct=trees_saved_pct,
+            fires_extinguished=fires_extinguished,
+            water_used=st.session_state.metrics_history['water_used'][-1] if st.session_state.metrics_history['water_used'] else 0,
+            initial_trees=st.session_state.initial_trees_count,
+            final_trees=final_trees
+        )
+        
+        st.markdown("### 📈 Métricas Finales")
+        st.write(f"**Duración:** {summary['duration']}")
+        st.write(f"**Árboles Salvados:** {summary['trees_saved']}")
+        st.write(f"**Árboles Perdidos:** {summary['trees_lost']}")
+        st.write(f"**Fuegos Extintos:** {summary['fires_extinguished']}")
+        st.write(f"**Agua Consumida:** {summary['water_used']}")
+        st.write(f"**Eficiencia:** {summary['efficiency']}")
+    
+    with col_sum2:
+        # Gráfico de trayectorias de drones usando visualization.py
+        if st.session_state.metrics_history['agents_position']:
+            st.markdown("### 🚁 Trayectorias de Drones")
+            fig_traj = create_agent_positions_chart(
+                st.session_state.metrics_history['agents_position'],
+                env.grid_size
+            )
+            if fig_traj:
+                st.plotly_chart(fig_traj, use_container_width=True)
+    
     return True
 
 # ============================================================================
@@ -266,35 +237,145 @@ def run_mission(env, num_agents, max_steps=100):
 st.sidebar.title("🎮 Centro de Control")
 st.sidebar.markdown("---")
 
+# ============================================================================
+# BARRA LATERAL (SIDEBAR)
+# ============================================================================
+st.sidebar.title("🎮 Centro de Control")
+st.sidebar.markdown("---")
+
+# SELECTOR DE MODO DE SIMULACIÓN
+st.sidebar.header("🌍 Modo de Simulación")
+simulation_mode = st.sidebar.radio(
+    "Tipo de Escenario",
+    options=["Grid Aleatorio", "Bosques Reales"],
+    index=0 if st.session_state.simulation_mode == 'grid_aleatorio' else 1,
+    help="Elige entre un grid aleatorio o un bosque real con coordenadas geográficas"
+)
+
+# Actualizar estado
+if simulation_mode == "Grid Aleatorio":
+    st.session_state.simulation_mode = 'grid_aleatorio'
+else:
+    st.session_state.simulation_mode = 'gis'
+
+st.sidebar.markdown("---")
 st.sidebar.header("⚙️ Parámetros de Simulación")
 
-# Parámetros ajustables
-grid_size = st.sidebar.slider(
-    "Tamaño del Grid (lado)",
-    min_value=8,
-    max_value=15,
-    value=10,
-    step=1,
-    help="Tamaño de la cuadrícula del bosque"
-)
+# PARÁMETROS ESPECÍFICOS POR MODO
+if st.session_state.simulation_mode == 'grid_aleatorio':
+    # Parámetros para grid aleatorio
+    grid_size = st.sidebar.slider(
+        "Tamaño del Grid (lado)",
+        min_value=8,
+        max_value=15,
+        value=10,
+        step=1,
+        help="Tamaño de la cuadrícula del bosque"
+    )
 
-fire_spread_prob = st.sidebar.slider(
-    "Probabilidad de Propagación del Fuego",
-    min_value=0.0,
-    max_value=0.5,
-    value=0.1,
-    step=0.01,
-    help="Probabilidad de que el fuego se propague a celdas adyacentes"
-)
+    fire_spread_prob = st.sidebar.slider(
+        "Probabilidad de Propagación del Fuego",
+        min_value=0.0,
+        max_value=0.5,
+        value=0.1,
+        step=0.01,
+        help="Probabilidad de que el fuego se propague a celdas adyacentes"
+    )
 
-initial_trees = st.sidebar.slider(
-    "Densidad de Árboles",
-    min_value=0.3,
-    max_value=0.9,
-    value=0.6,
-    step=0.05,
-    help="Proporción de celdas ocupadas por árboles (0-1)"
-)
+    initial_trees = st.sidebar.slider(
+        "Densidad de Árboles",
+        min_value=0.3,
+        max_value=0.9,
+        value=0.6,
+        step=0.05,
+        help="Proporción de celdas ocupadas por árboles (0-1)"
+    )
+
+else:
+    # Parámetros para bosques reales (GIS)
+    scenario_type = st.sidebar.radio(
+        "Tipo de Bosque",
+        options=["Escenarios Predefinidos", "Personalizado"],
+        index=0,
+        help="Usa un escenario predefinido o ingresa coordenadas personalizadas"
+    )
+
+    if scenario_type == "Escenarios Predefinidos":
+        scenario_names = list(ESCENARIOS_REALES.keys())
+        selected_scenario = st.sidebar.selectbox(
+            "Seleccionar Escenario",
+            options=scenario_names,
+            help="Escenarios GIS predefinidos con bosques reales"
+        )
+        st.session_state.gis_scenario = ESCENARIOS_REALES[selected_scenario]
+        
+        # Mostrar información del bosque
+        bosque_info = st.session_state.gis_scenario['bosque']
+        with st.sidebar.expander("ℹ️ Información del Bosque"):
+            st.write(f"**País:** {bosque_info.pais}")
+            st.write(f"**Ubicación:** {bosque_info.latitud:.4f}°, {bosque_info.longitud:.4f}°")
+            st.write(f"**Área:** {bosque_info.area_km2:.0f} km²")
+            st.write(f"**Amenazas:** {', '.join(bosque_info.amenazas)}")
+            st.write(f"**Descripción:** {bosque_info.descripcion}")
+    else:
+        # Entrada personalizada
+        st.sidebar.write("**Ingresar Coordenadas Personalizadas**")
+        custom_lat = st.sidebar.number_input(
+            "Latitud",
+            min_value=-90.0,
+            max_value=90.0,
+            value=-3.4653,
+            step=0.0001,
+            format="%.4f"
+        )
+        custom_lon = st.sidebar.number_input(
+            "Longitud",
+            min_value=-180.0,
+            max_value=180.0,
+            value=-62.2159,
+            step=0.0001,
+            format="%.4f"
+        )
+        custom_name = st.sidebar.text_input("Nombre del Bosque", "Mi Bosque")
+        
+        # Crear bosque personalizado
+        from gis_locations import BosqueReal
+        custom_bosque = BosqueReal(
+            nombre=custom_name,
+            pais="Personalizado",
+            latitud=custom_lat,
+            longitud=custom_lon,
+            area_km2=50.0,
+            densidad="media",
+            amenazas=["fire"],
+            descripcion="Bosque personalizado para simulación"
+        )
+        st.session_state.gis_scenario = {
+            'name': custom_name,
+            'bosque': custom_bosque,
+            'initial_fires': 3,
+            'initial_trees': 0.65,
+            'fire_spread_prob': 0.15
+        }
+    
+    # Parámetros ajustables para GIS
+    fire_spread_prob = st.sidebar.slider(
+        "Probabilidad de Propagación del Fuego",
+        min_value=0.0,
+        max_value=0.5,
+        value=st.session_state.gis_scenario.get('fire_spread_prob', 0.1),
+        step=0.01,
+        help="Probabilidad de que el fuego se propague"
+    )
+    
+    initial_trees = st.sidebar.slider(
+        "Densidad de Árboles",
+        min_value=0.3,
+        max_value=0.9,
+        value=st.session_state.gis_scenario.get('initial_trees', 0.65),
+        step=0.05,
+        help="Proporción de cobertura forestal"
+    )
 
 num_agents = st.sidebar.radio(
     "Número de Drones",
@@ -307,9 +388,9 @@ initial_fires = st.sidebar.slider(
     "Focos de Fuego Iniciales",
     min_value=1,
     max_value=5,
-    value=3,
+    value=st.session_state.gis_scenario.get('initial_fires', 3) if st.session_state.simulation_mode == 'gis' else 3,
     step=1,
-    help="Número de focos de incendio al inicio de la misión"
+    help="Número de focos de incendio al inicio"
 )
 
 max_steps = st.sidebar.slider(
@@ -330,13 +411,27 @@ col_btn1, col_btn2 = st.sidebar.columns(2)
 with col_btn1:
     if st.button("🚀 Iniciar Misión", use_container_width=True, key="start_mission"):
         st.session_state.mission_active = True
-        st.session_state.env = ForestFireEnv(
-            grid_size=grid_size,
-            fire_spread_prob=fire_spread_prob,
-            initial_trees=initial_trees,
-            initial_fires=initial_fires,
-            num_agents=num_agents
-        )
+        
+        if st.session_state.simulation_mode == 'grid_aleatorio':
+            # Crear ambiente de grid aleatorio
+            st.session_state.env = ForestFireEnv(
+                grid_size=grid_size,
+                fire_spread_prob=fire_spread_prob,
+                initial_trees=initial_trees,
+                initial_fires=initial_fires,
+                num_agents=num_agents
+            )
+        else:
+            # Crear ambiente GIS con bosque real
+            bosque = st.session_state.gis_scenario['bosque']
+            st.session_state.env = ForestFireGISEnv(
+                bosque=bosque,
+                grid_size=10,
+                fire_spread_prob=fire_spread_prob,
+                initial_trees=initial_trees,
+                initial_fires=initial_fires,
+                num_agents=num_agents
+            )
 
 with col_btn2:
     if st.button("🔄 Limpiar", use_container_width=True, key="reset"):
@@ -421,8 +516,271 @@ if st.session_state.mission_active and st.session_state.env:
     
     st.markdown("---")
     
+    # MOSTRAR MAPA GIS SI ESTÁ EN MODO GIS
+    if st.session_state.simulation_mode == 'gis' and st.session_state.env:
+        st.subheader("🗺️ Visualización Geográfica del Bosque")
+        
+        # Crear visualizador de mapas
+        try:
+            map_visualizer = MapaForestGuardian(st.session_state.env)
+            
+            # Opciones de visualización del mapa
+            col_map_opt1, col_map_opt2, col_map_opt3 = st.columns(3)
+            
+            with col_map_opt1:
+                show_heatmap = st.checkbox("🔥 Mostrar Heatmap de Fuego", value=True)
+            with col_map_opt2:
+                show_grid = st.checkbox("📐 Mostrar Grid de Simulación", value=True)
+            with col_map_opt3:
+                show_forest_info = st.checkbox("ℹ️ Información del Bosque", value=True)
+            
+            # Generar mapa con opciones seleccionadas
+            map_obj = map_visualizer.crear_mapa_completo(
+                incluir_heatmap=show_heatmap,
+                incluir_grid=show_grid,
+                incluir_drones=True,
+                incluir_arboles=True,
+                incluir_info=False  # Manejamos la info por separado debajo
+            )
+            
+            # Mostrar mapa con streamlit-folium
+            if st_folium:
+                st_folium(map_obj, width=st.session_state.env.grid_size * 50, height=500)
+            else:
+                st.warning("⚠️ streamlit-folium no está instalado. Instálalo con: pip install streamlit-folium")
+            
+            # Mostrar información del bosque
+            if show_forest_info:
+                st.markdown("---")
+                col_info1, col_info2 = st.columns(2)
+                
+                with col_info1:
+                    bosque = st.session_state.env.bosque
+                    st.markdown(f"### 🌲 {bosque.nombre}")
+                    st.write(f"**País:** {bosque.pais}")
+                    st.write(f"**Coordenadas:** {bosque.latitud:.4f}°, {bosque.longitud:.4f}°")
+                    st.write(f"**Área:** {bosque.area_km2:.0f} km²")
+                
+                with col_info2:
+                    st.markdown("### 📊 Resumen de la Misión")
+                    bounds = st.session_state.env.get_grid_bounds()
+                    st.write(f"**Área Cubierta:** {st.session_state.env.get_coverage_area_km2():.2f} km²")
+                    st.write(f"**Centro:** {bounds['center_lat']:.4f}°, {bounds['center_lon']:.4f}°")
+                    st.write(f"**Límites:** N={bounds['north']:.4f}°, S={bounds['south']:.4f}°")
+        
+        except Exception as e:
+            st.error(f"❌ Error al generar el mapa: {str(e)}")
+    
     # Ejecutar la misión
     run_mission(st.session_state.env, num_agents, max_steps)
+    
+    # PESTAÑAS CON ANÁLISIS ADICIONALES
+    if st.session_state.frames_history and len(st.session_state.frames_history) > 0:
+        st.markdown("---")
+        st.header("📊 Análisis Detallado de la Misión")
+        
+        tab1, tab2, tab3, tab4 = st.tabs([
+            "📈 Series Temporales",
+            "🔥 Análisis de Fuego",
+            "🚁 Trayectorias de Drones",
+            "📊 Estadísticas Finales"
+        ])
+        
+        with tab1:
+            st.subheader("Series Temporales de Métricas")
+            if st.session_state.metrics_history['step']:
+                # Usar visualización de visualization.py
+                from visualization import create_metrics_timeseries
+                
+                fig_timeseries = create_metrics_timeseries(
+                    st.session_state.metrics_history,
+                    include_density=True
+                )
+                
+                if fig_timeseries:
+                    st.plotly_chart(fig_timeseries, use_container_width=True)
+                    
+                    # Descargar datos
+                    col_dl1, col_dl2 = st.columns(2)
+                    with col_dl1:
+                        import pandas as pd
+                        df_metrics = pd.DataFrame(st.session_state.metrics_history)
+                        csv = df_metrics.to_csv(index=False)
+                        st.download_button(
+                            label="📥 Descargar Métricas (CSV)",
+                            data=csv,
+                            file_name="forest_guardian_metrics.csv",
+                            mime="text/csv"
+                        )
+        
+        with tab2:
+            st.subheader("🔥 Análisis de Propagación del Fuego")
+            
+            col_fire1, col_fire2 = st.columns(2)
+            
+            with col_fire1:
+                # Gráfico de fuegos activos a lo largo del tiempo
+                import plotly.graph_objects as go
+                
+                fig_fires = go.Figure()
+                fig_fires.add_trace(go.Scatter(
+                    x=st.session_state.metrics_history['step'],
+                    y=st.session_state.metrics_history['active_fires'],
+                    mode='lines+markers',
+                    name='Fuegos Activos',
+                    line=dict(color='#ff0000', width=3),
+                    fill='tozeroy',
+                    fillcolor='rgba(255, 0, 0, 0.2)'
+                ))
+                
+                fig_fires.update_layout(
+                    title="Evolución de Fuegos Activos",
+                    xaxis_title="Paso",
+                    yaxis_title="Número de Fuegos",
+                    hovermode='x',
+                    height=400
+                )
+                
+                st.plotly_chart(fig_fires, use_container_width=True)
+            
+            with col_fire2:
+                # Estadísticas de fuego
+                st.markdown("### 📊 Estadísticas")
+                
+                if st.session_state.metrics_history['active_fires']:
+                    max_fires = max(st.session_state.metrics_history['active_fires'])
+                    min_fires = min(st.session_state.metrics_history['active_fires'])
+                    avg_fires = sum(st.session_state.metrics_history['active_fires']) / len(st.session_state.metrics_history['active_fires'])
+                    
+                    st.metric("Fuegos Máximos", max_fires)
+                    st.metric("Fuegos Mínimos", min_fires)
+                    st.metric("Promedio", f"{avg_fires:.1f}")
+                    
+                    # Tasa de extinción
+                    initial_fires = st.session_state.metrics_history['active_fires'][0]
+                    final_fires = st.session_state.metrics_history['active_fires'][-1]
+                    extinction_rate = ((initial_fires - final_fires) / initial_fires * 100) if initial_fires > 0 else 0
+                    
+                    st.metric("Tasa de Extinción", f"{extinction_rate:.1f}%")
+        
+        with tab3:
+            st.subheader("🚁 Análisis de Movimiento de Drones")
+            
+            if st.session_state.metrics_history['agents_position']:
+                from visualization import create_agent_positions_chart
+                
+                # Gráfico de trayectorias
+                fig_traj = create_agent_positions_chart(
+                    st.session_state.metrics_history['agents_position'],
+                    st.session_state.env.grid_size
+                )
+                
+                if fig_traj:
+                    st.plotly_chart(fig_traj, use_container_width=True)
+                    
+                    # Estadísticas de movimiento
+                    st.markdown("---")
+                    st.markdown("### 📏 Estadísticas de Movimiento")
+                    
+                    col_mov1, col_mov2, col_mov3 = st.columns(3)
+                    
+                    # Calcular distancia total recorrida por cada dron
+                    positions_history = st.session_state.metrics_history['agents_position']
+                    
+                    for agent_idx in range(num_agents):
+                        total_distance = 0
+                        for i in range(1, len(positions_history)):
+                            pos_prev = positions_history[i-1][agent_idx] if len(positions_history[i-1]) > agent_idx else (0, 0)
+                            pos_curr = positions_history[i][agent_idx] if len(positions_history[i]) > agent_idx else (0, 0)
+                            
+                            # Distancia Manhattan
+                            distance = abs(pos_curr[0] - pos_prev[0]) + abs(pos_curr[1] - pos_prev[1])
+                            total_distance += distance
+                        
+                        col = [col_mov1, col_mov2, col_mov3][agent_idx]
+                        with col:
+                            drone_colors = ["🔵", "🟠", "🟣"]
+                            st.metric(
+                                f"{drone_colors[agent_idx]} Dron {agent_idx + 1}",
+                                f"{total_distance} celdas"
+                            )
+        
+        with tab4:
+            st.subheader("📊 Resumen Final de la Misión")
+            
+            # Crear resumen detallado
+            col_stat1, col_stat2, col_stat3 = st.columns(3)
+            
+            with col_stat1:
+                st.markdown("### 🌳 Bosque")
+                final_trees = np.sum(st.session_state.frames_history[-1] == 1) if st.session_state.frames_history else 0
+                trees_saved_pct = (final_trees / st.session_state.initial_trees_count * 100) if st.session_state.initial_trees_count > 0 else 0
+                trees_lost = st.session_state.initial_trees_count - final_trees
+                
+                st.metric("Árboles Iniciales", st.session_state.initial_trees_count)
+                st.metric("Árboles Salvados", final_trees, f"{trees_saved_pct:.1f}%")
+                st.metric("Árboles Perdidos", trees_lost, f"-{100-trees_saved_pct:.1f}%")
+            
+            with col_stat2:
+                st.markdown("### 🔥 Fuegos")
+                initial_fires = st.session_state.metrics_history['active_fires'][0] if st.session_state.metrics_history['active_fires'] else 0
+                final_fires = st.session_state.metrics_history['active_fires'][-1] if st.session_state.metrics_history['active_fires'] else 0
+                fires_extinguished = initial_fires - final_fires
+                
+                st.metric("Fuegos Iniciales", initial_fires)
+                st.metric("Fuegos Extintos", fires_extinguished)
+                st.metric("Fuegos Restantes", final_fires)
+            
+            with col_stat3:
+                st.markdown("### 🚁 Drones")
+                total_steps = len(st.session_state.metrics_history['step'])
+                water_used = st.session_state.metrics_history['water_used'][-1] if st.session_state.metrics_history['water_used'] else 0
+                
+                st.metric("Pasos Totales", total_steps)
+                st.metric("Agua Consumida", f"{water_used} L")
+                
+                # Eficiencia
+                if water_used > 0 and fires_extinguished > 0:
+                    efficiency = fires_extinguished / water_used * 100
+                    st.metric("Eficiencia", f"{efficiency:.2f}%")
+                else:
+                    st.metric("Eficiencia", "N/A")
+            
+            # Gráfico de comparación final
+            st.markdown("---")
+            st.markdown("### 📊 Comparación: Estado Inicial vs Final")
+            
+            import plotly.graph_objects as go
+            
+            fig_comparison = go.Figure()
+            
+            categories = ['Árboles', 'Fuegos']
+            initial_values = [st.session_state.initial_trees_count, initial_fires]
+            final_values = [final_trees, final_fires]
+            
+            fig_comparison.add_trace(go.Bar(
+                name='Inicial',
+                x=categories,
+                y=initial_values,
+                marker_color='#667eea'
+            ))
+            
+            fig_comparison.add_trace(go.Bar(
+                name='Final',
+                x=categories,
+                y=final_values,
+                marker_color='#764ba2'
+            ))
+            
+            fig_comparison.update_layout(
+                title="Comparación Estado Inicial vs Final",
+                xaxis_title="Categoría",
+                yaxis_title="Cantidad",
+                barmode='group',
+                height=400
+            )
+            
+            st.plotly_chart(fig_comparison, use_container_width=True)
     
 else:
     st.info("👈 Ajusta los parámetros en el panel izquierdo y presiona '🚀 Iniciar Misión' para comenzar")
