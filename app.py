@@ -299,7 +299,7 @@ initial_trees = st.sidebar.slider(
 num_agents = st.sidebar.radio(
     "Número de Drones",
     options=[1, 2, 3],
-    value=2,
+    index=1,
     help="Cantidad de drones autónomos a desplegar"
 )
 
