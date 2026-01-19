@@ -193,7 +193,7 @@ def make_the_magic():
     env.render_animation(frames, filename=gif_filename)
     
     # 3. EL TOQUE MAESTRO: Generar el HTML
-    base_dir = r"C:\Users\diego\Downloads\forestGuardianRL\GIF"
+    base_dir = "GIF"
     full_gif_path = os.path.join(base_dir, gif_filename)
     
     print(f">>> Redactando Informe Táctico Automático...")

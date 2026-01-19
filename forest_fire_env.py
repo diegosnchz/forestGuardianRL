@@ -131,8 +131,8 @@ class ForestFireEnv(gym.Env):
         return self._get_obs(), 0, terminated, truncated, {}
 
     def render_animation(self, frames, filename='simulation.gif', fps=5):
-        # RUTA ESPECÍFICA DEL USUARIO
-        base_dir = r"C:\Users\diego\Downloads\forestGuardianRL\GIF"
+        # Crear carpeta GIF en directorio actual
+        base_dir = "GIF"
         
         if not os.path.exists(base_dir):
             try:
