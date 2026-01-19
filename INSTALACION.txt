@@ -1,0 +1,95 @@
+╔════════════════════════════════════════════════════════════════╗
+║     🔥 FOREST GUARDIAN RL - GUÍA DE INSTALACIÓN RÁPIDA        ║
+╚════════════════════════════════════════════════════════════════╝
+
+📋 REQUISITOS:
+   • Python 3.8 o superior
+   • 200MB de espacio libre
+   • Navegador web moderno
+
+═══════════════════════════════════════════════════════════════════
+
+🚀 INSTALACIÓN EN 4 PASOS:
+
+1️⃣  DESCARGAR DEPENDENCIAS
+    
+    pip install -r requirements.txt
+
+2️⃣  INICIAR STREAMLIT
+    
+    streamlit run app.py
+
+3️⃣  ACCEDER A LA APP
+    
+    Se abrirá automáticamente en: http://localhost:8501
+    
+    Si no se abre, copia y pega manualmente la URL
+
+4️⃣  ¡JUGAR!
+    
+    • Ajusta parámetros en la barra lateral
+    • Presiona "🚀 Iniciar Misión"
+    • Observa cómo los drones luchan contra el fuego
+
+═══════════════════════════════════════════════════════════════════
+
+📁 ESTRUCTURA DE ARCHIVOS NUEVOS:
+
+    app.py                       ← Aplicación principal Streamlit
+    visualization.py             ← Visualizaciones Plotly
+    metrics.py                   ← Cálculo de métricas
+    config.py                    ← Configuraciones
+    train_and_test_refactored.py ← Motor de simulación mejorado
+    quick_start.py               ← Menú interactivo Python
+    requirements.txt             ← Dependencias actualizadas
+
+    📖 DOCUMENTACIÓN:
+    QUICK_START.md               ← Guía en 3 minutos
+    STREAMLIT_README.md          ← Documentación completa
+    ARCHITECTURE.md              ← Estructura técnica
+
+═══════════════════════════════════════════════════════════════════
+
+🎯 CASOS DE USO RÁPIDOS:
+
+   Fácil:      Grid=10, Fuego=0.05, Árboles=0.8, Drones=2
+   Normal:     Grid=10, Fuego=0.1, Árboles=0.6, Drones=2
+   Difícil:    Grid=12, Fuego=0.2, Árboles=0.5, Drones=2
+   Extremo:    Grid=15, Fuego=0.3, Árboles=0.4, Drones=3
+
+═══════════════════════════════════════════════════════════════════
+
+❓ PREGUNTAS FRECUENTES:
+
+P: ¿Qué hace cada módulo?
+R: Ver ARCHITECTURE.md
+
+P: ¿Cómo interpretar los gráficos?
+R: Ver STREAMLIT_README.md - Sección "Interpretación de Métricas"
+
+P: ¿Cómo personalizar agentes?
+R: Ver train_and_test_refactored.py - Clase TerminatorAgent
+
+P: ¿El agua es limitada?
+R: No, los drones tienen tanques infinitos de 999 unidades
+
+P: ¿Puedo guardar resultados?
+R: Los GIFs se guardan automáticamente en carpeta GIF/
+
+═══════════════════════════════════════════════════════════════════
+
+🔧 SOLUCIÓN RÁPIDA DE PROBLEMAS:
+
+Error: "streamlit not found"
+→ pip install streamlit
+
+Error: "Port 8501 already in use"
+→ streamlit run app.py --server.port 8502
+
+Simulación lenta
+→ Reduce Grid (8-9) y Pasos (50-75)
+
+═══════════════════════════════════════════════════════════════════
+
+✨ ¡Listo para experimentar! ¡Bienvenido a Forest Guardian RL! ✨
+
