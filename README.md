@@ -1,6 +1,26 @@
 # Forest Guardian RL 🌲🔥
 
-Sistema de control multi-agente para extinción de incendios forestales con algoritmos tácticos coordinados.
+Sistema de control multi-agente para extinción de incendios forestales con algoritmos tácticos coordinados, sistema XAI de explicabilidad, y **Mission Logger para tracking histórico en MongoDB Atlas**.
+
+## 🆕 Nuevas Características
+
+### 📜 Mission Logger (MongoDB Atlas)
+- **Persistencia**: Guarda automáticamente cada simulación en MongoDB Atlas
+- **XAI History**: Almacena el historial completo de decisiones XAI paso a paso
+- **Analytics**: Compara configuraciones y optimiza estrategias
+- **Estadísticas Globales**: Tendencias, ranking de mejores misiones, filtros por zona
+
+👉 **[QUICKSTART Mission Logger](QUICKSTART_MISSION_LOGGER.md)** - Empieza en 5 minutos  
+👉 **[Documentación completa Mission Logger](MISSION_LOGGER_README.md)** - API y casos de uso
+
+### 🧠 Sistema XAI (Explainable AI)
+- **Interpretación de Decisiones**: Explicación textual de cada acción del agente
+- **Mapas de Importancia**: Visualiza qué píxeles influyeron más en cada decisión
+- **Justificación Táctica**: Razonamiento detrás de decisiones complejas
+- **Confidence Scores**: Nivel de confianza del agente en cada paso
+
+👉 **[QUICKSTART XAI](QUICKSTART_XAI.md)** - Guía rápida  
+👉 **[Documentación completa XAI](XAI_README.md)** - Sistema completo
 
 ## Estructura del Proyecto
 
@@ -44,8 +64,41 @@ pip install -r requirements.txt
 - `matplotlib>=3.5.0` - Visualización
 - `numpy>=1.21.0` - Operaciones numéricas
 - `pillow>=9.0.0` - Generación de GIF
+- `streamlit>=1.28.0` - Dashboard interactivo
+- `plotly>=5.17.0` - Gráficos interactivos
+- `folium>=0.14.0` - Mapas geoespaciales
+- `pymongo>=4.6.0` - **MongoDB Atlas (Mission Logger)**
 
-### 3. Ejecutar Simulación
+### 3. Configurar MongoDB Atlas (Opcional - para Mission Logger)
+
+```bash
+# 1. Crea cuenta gratuita en MongoDB Atlas
+# 2. Crea cluster M0 (gratis)
+# 3. Whitelist IP: 0.0.0.0/0
+# 4. Copia connection string
+
+# 5. Prueba conexión:
+python test_mission_logger.py
+```
+
+👉 **Ver [QUICKSTART Mission Logger](QUICKSTART_MISSION_LOGGER.md)** para guía detallada
+
+### 4. Ejecutar Dashboard Interactivo (Recomendado)
+
+```bash
+streamlit run app.py
+```
+
+Esto abrirá un dashboard interactivo con:
+- **Tab 1**: Configuración y ejecución de misiones
+- **Tab 2**: Métricas en tiempo real
+- **Tab 3**: Visualización de agentes
+- **Tab 4**: Resumen y exportación
+- **Tab 5**: Mapas geoespaciales (MongoDB Atlas)
+- **Tab 6**: 🧠 Explicabilidad IA (XAI)
+- **Tab 7**: 📜 **Historial de Misiones (Mission Logger)**
+
+### 5. Ejecutar Simulación por Terminal
 
 ```bash
 python train_and_test.py

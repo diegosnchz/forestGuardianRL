@@ -46,6 +46,13 @@ try:
 except ImportError:
     XAI_AVAILABLE = False
 
+# Importar módulo de Mission Logger
+try:
+    from mission_logger import MissionLogger, save_mission_summary
+    MISSION_LOGGER_AVAILABLE = True
+except ImportError:
+    MISSION_LOGGER_AVAILABLE = False
+
 # ============================================================================
 # CONFIGURACIÓN DE STREAMLIT
 # ============================================================================
@@ -118,6 +125,10 @@ if 'xai_decisions' not in st.session_state:
     st.session_state.xai_decisions = []
 if 'xai_explainer' not in st.session_state:
     st.session_state.xai_explainer = None
+if 'mission_logger' not in st.session_state:
+    st.session_state.mission_logger = None
+if 'last_mission_id' not in st.session_state:
+    st.session_state.last_mission_id = None
 
 # ============================================================================
 # FUNCIONES AUXILIARES
@@ -254,11 +265,55 @@ def run_mission(env, num_agents, max_steps=100):
     # Estado final
     st.session_state.frames_history = frames
     
+    # Calcular métricas finales
+    final_trees = np.sum(obs == 1)
+    fires_extinguished = st.session_state.initial_trees_count - final_trees  # Aproximado
+    water_consumed = 999 - env.water_tanks[0]
+    
+    # Guardar misión en MongoDB si está disponible
+    if MISSION_LOGGER_AVAILABLE and st.session_state.mission_logger:
+        try:
+            geo_zone = st.session_state.get('selected_bosque', 'Grid Aleatorio')
+            geojson_file = st.session_state.get('geojson_file', None)
+            
+            configuration = {
+                "grid_size": env.grid.shape[0],
+                "num_agents": num_agents,
+                "fire_prob": env.fire_propagation_prob,
+                "tree_density": 0.3,  # Default o desde config
+                "initial_fires": len(np.argwhere(frames[0] == 2)),
+                "max_steps": max_steps
+            }
+            
+            mission_id = save_mission_summary(
+                mission_logger=st.session_state.mission_logger,
+                geo_zone=geo_zone,
+                geojson_file=geojson_file,
+                configuration=configuration,
+                initial_trees=st.session_state.initial_trees_count,
+                final_trees=final_trees,
+                fires_extinguished=fires_extinguished,
+                water_consumed=water_consumed,
+                steps_taken=step,
+                xai_decisions=st.session_state.xai_decisions if XAI_AVAILABLE else [],
+                final_grid=obs
+            )
+            
+            if mission_id:
+                st.session_state.last_mission_id = mission_id
+                print(f"✅ Misión guardada en MongoDB: {mission_id}")
+        except Exception as e:
+            print(f"⚠️ Error guardando misión: {e}")
+    
     with placeholder_status.container():
         if done:
             st.success("✅ Misión completada - Todos los fuegos extinguidos")
         else:
             st.warning(f"⏱️ Misión completada por tiempo máximo ({max_steps} pasos)")
+        
+        # Mostrar ID de misión si fue guardada
+        if st.session_state.last_mission_id:
+            st.info(f"💾 Misión guardada: `{st.session_state.last_mission_id}`")
     
     # Mostrar resumen final con visualization.py
     st.markdown("---")
@@ -496,6 +551,53 @@ if streamlit_atlas_map_viewer and PYMONGO_AVAILABLE:
             st.success("✅ URI configurado")
         else:
             st.info("💡 Configura para habilitar mapa geoespacial")
+        
+        # Mission Logger - Usar el mismo URI de MongoDB Atlas
+        st.markdown("---")
+        st.markdown("### 💾 Mission Logger")
+        
+        enable_mission_logger = st.checkbox(
+            "Habilitar historial de misiones",
+            value=True,
+            help="Guarda automáticamente los resultados de cada misión"
+        )
+        
+        if enable_mission_logger and mongodb_uri and MISSION_LOGGER_AVAILABLE:
+            # Intentar conectar al mission logger
+            if st.session_state.mission_logger is None:
+                try:
+                    st.session_state.mission_logger = MissionLogger(uri=mongodb_uri)
+                    if st.session_state.mission_logger.connect():
+                        st.success("✅ Mission Logger conectado")
+                    else:
+                        st.error("❌ Error conectando Mission Logger")
+                        st.session_state.mission_logger = None
+                except Exception as e:
+                    st.error(f"❌ Error: {str(e)}")
+                    st.session_state.mission_logger = None
+            else:
+                # Ya está conectado
+                if st.session_state.mission_logger.connected:
+                    st.success("✅ Mission Logger conectado")
+                    
+                    # Mostrar última misión guardada
+                    if st.session_state.last_mission_id:
+                        st.info(f"📝 Última misión: {st.session_state.last_mission_id[:8]}...")
+                else:
+                    st.warning("⚠️ Desconectado - intentando reconectar...")
+                    if st.session_state.mission_logger.connect():
+                        st.success("✅ Reconectado")
+                    else:
+                        st.error("❌ No se pudo reconectar")
+        elif enable_mission_logger and not MISSION_LOGGER_AVAILABLE:
+            st.error("❌ pymongo no instalado")
+            st.code("pip install pymongo", language="bash")
+        elif enable_mission_logger and not mongodb_uri:
+            st.warning("⚠️ Necesitas configurar MongoDB URI arriba")
+        elif not enable_mission_logger:
+            st.info("💡 Activa para guardar historial de misiones")
+            # Limpiar mission logger si está deshabilitado
+            st.session_state.mission_logger = None
 
 st.sidebar.markdown("---")
 st.sidebar.header("🎯 Acciones")
@@ -674,13 +776,14 @@ if st.session_state.mission_active and st.session_state.env:
         st.markdown("---")
         st.header("📊 Análisis Detallado de la Misión")
         
-        tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+        tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
             "📈 Series Temporales",
             "🔥 Análisis de Fuego",
             "🚁 Trayectorias de Drones",
             "📊 Estadísticas Finales",
             "🗺️ Mapa Geoespacial (Atlas)",
-            "🧠 Explicabilidad IA (XAI)"
+            "🧠 Explicabilidad IA (XAI)",
+            "📜 Historial de Misiones"
         ])
         
         with tab1:
@@ -1193,6 +1296,323 @@ if st.session_state.mission_active and st.session_state.env:
                                     json.dump(export_data, f, indent=2, ensure_ascii=False)
                                 
                                 st.success(f"✅ Historial exportado: {filename}")
+        
+        with tab7:
+            st.subheader("📜 Historial de Misiones - MongoDB Atlas")
+            
+            # Verificar si Mission Logger está disponible
+            if not MISSION_LOGGER_AVAILABLE:
+                st.error("❌ Mission Logger no disponible")
+                st.code("pip install pymongo", language="bash")
+                st.info("Instala pymongo para habilitar el historial de misiones")
+            elif not st.session_state.mission_logger or not st.session_state.mission_logger.connected:
+                st.warning("⚠️ No hay conexión a MongoDB Atlas")
+                st.info("""
+                💡 **Para usar el historial de misiones:**
+                
+                1. Configura tu URI de MongoDB Atlas en la sidebar
+                2. Ejecuta una misión
+                3. Regresa a esta pestaña para ver el historial
+                """)
+            else:
+                # Mission logger está disponible y conectado
+                st.success("✅ Conectado a MongoDB Atlas")
+                
+                # Tabs internos para diferentes vistas
+                hist_tab1, hist_tab2, hist_tab3, hist_tab4 = st.tabs([
+                    "🕐 Recientes",
+                    "🏆 Mejores",
+                    "🔍 Buscar",
+                    "📊 Estadísticas"
+                ])
+                
+                with hist_tab1:
+                    st.markdown("#### 🕐 Misiones Recientes")
+                    
+                    # Control de cantidad
+                    limit = st.slider("Número de misiones", 5, 50, 10, key="recent_limit")
+                    
+                    # Obtener misiones
+                    missions = st.session_state.mission_logger.get_recent_missions(limit)
+                    
+                    if not missions:
+                        st.info("No hay misiones registradas aún")
+                    else:
+                        st.write(f"**Total: {len(missions)} misiones**")
+                        
+                        # Crear tabla de misiones
+                        import pandas as pd
+                        mission_data = []
+                        for m in missions:
+                            mission_data.append({
+                                "ID": m['mission_id'][:8] + "...",
+                                "Zona": m['geo_zone'],
+                                "Supervivencia": f"{m['kpis']['kpi_survival_rate']:.1f}%",
+                                "Fuegos": m['kpis']['fires_extinguished'],
+                                "Pasos": m['kpis']['steps_taken'],
+                                "Éxito": "✅" if m['kpis']['mission_success'] else "❌",
+                                "Fecha": m['timestamp'][:19]
+                            })
+                        
+                        df = pd.DataFrame(mission_data)
+                        st.dataframe(df, use_container_width=True, height=400)
+                        
+                        # Selector de misión para detalles
+                        st.markdown("---")
+                        st.markdown("#### 📋 Detalles de Misión")
+                        
+                        mission_options = {f"{m['mission_id'][:8]}... - {m['geo_zone']} ({m['kpis']['kpi_survival_rate']:.1f}%)": m['mission_id'] 
+                                         for m in missions}
+                        
+                        selected_option = st.selectbox("Seleccionar misión", list(mission_options.keys()))
+                        
+                        if selected_option:
+                            selected_id = mission_options[selected_option]
+                            mission = st.session_state.mission_logger.get_mission_by_id(selected_id)
+                            
+                            if mission:
+                                # Mostrar detalles
+                                col_det1, col_det2, col_det3, col_det4 = st.columns(4)
+                                
+                                with col_det1:
+                                    st.metric("Supervivencia", f"{mission['kpis']['kpi_survival_rate']:.1f}%")
+                                with col_det2:
+                                    st.metric("Fuegos Apagados", mission['kpis']['fires_extinguished'])
+                                with col_det3:
+                                    st.metric("Agua Usada", mission['kpis']['water_consumed'])
+                                with col_det4:
+                                    st.metric("Pasos", mission['kpis']['steps_taken'])
+                                
+                                # Configuración
+                                with st.expander("⚙️ Configuración"):
+                                    st.json(mission['configuration'])
+                                
+                                # Estadísticas por agente
+                                if mission.get('agent_stats'):
+                                    with st.expander("🤖 Estadísticas por Agente"):
+                                        for agent_id, stats in mission['agent_stats'].items():
+                                            st.markdown(f"**{agent_id}**")
+                                            col_ag1, col_ag2 = st.columns(2)
+                                            with col_ag1:
+                                                st.write(f"Decisiones: {stats['decisions']}")
+                                                st.write(f"Confianza promedio: {stats['avg_confidence']:.2f}")
+                                            with col_ag2:
+                                                st.write(f"Distancia promedio: {stats['avg_distance']:.2f}")
+                                                if stats.get('actions'):
+                                                    st.write("Acciones:")
+                                                    for action, count in stats['actions'].items():
+                                                        st.write(f"  • {action}: {count}")
+                                            st.markdown("---")
+                                
+                                # XAI Log
+                                if mission.get('xai_log') and len(mission['xai_log']) > 0:
+                                    with st.expander(f"🧠 Historial XAI ({len(mission['xai_log'])} decisiones)"):
+                                        xai_df = pd.DataFrame([
+                                            {
+                                                "Paso": d['step'],
+                                                "Agente": d['agent_id'],
+                                                "Acción": d['action_name'],
+                                                "Distancia": f"{d['distance_to_target']:.1f}",
+                                                "Confianza": f"{d['confidence']*100:.0f}%"
+                                            }
+                                            for d in mission['xai_log']
+                                        ])
+                                        st.dataframe(xai_df, use_container_width=True, height=300)
+                
+                with hist_tab2:
+                    st.markdown("#### 🏆 Mejores Misiones (por Supervivencia)")
+                    
+                    # Control de cantidad
+                    top_limit = st.slider("Número de misiones", 5, 20, 10, key="top_limit")
+                    
+                    # Obtener top misiones
+                    top_missions = st.session_state.mission_logger.get_top_missions(top_limit)
+                    
+                    if not top_missions:
+                        st.info("No hay misiones registradas aún")
+                    else:
+                        st.write(f"**Top {len(top_missions)} misiones**")
+                        
+                        # Gráfico de ranking
+                        fig_ranking = go.Figure()
+                        
+                        fig_ranking.add_trace(go.Bar(
+                            x=[f"{m['geo_zone']} ({m['mission_id'][:6]})" for m in top_missions],
+                            y=[m['kpis']['kpi_survival_rate'] for m in top_missions],
+                            marker_color=['#28a745' if m['kpis']['mission_success'] else '#ffc107' 
+                                        for m in top_missions],
+                            text=[f"{m['kpis']['kpi_survival_rate']:.1f}%" for m in top_missions],
+                            textposition='outside'
+                        ))
+                        
+                        fig_ranking.update_layout(
+                            title="Top Misiones por Tasa de Supervivencia",
+                            xaxis_title="Misión",
+                            yaxis_title="Tasa de Supervivencia (%)",
+                            height=500,
+                            showlegend=False
+                        )
+                        
+                        st.plotly_chart(fig_ranking, use_container_width=True)
+                        
+                        # Tabla
+                        top_data = []
+                        for idx, m in enumerate(top_missions, 1):
+                            top_data.append({
+                                "#": idx,
+                                "ID": m['mission_id'][:8] + "...",
+                                "Zona": m['geo_zone'],
+                                "Supervivencia": f"{m['kpis']['kpi_survival_rate']:.1f}%",
+                                "Fuegos": m['kpis']['fires_extinguished'],
+                                "Pasos": m['kpis']['steps_taken'],
+                                "Fecha": m['timestamp'][:19]
+                            })
+                        
+                        df_top = pd.DataFrame(top_data)
+                        st.dataframe(df_top, use_container_width=True, height=400)
+                
+                with hist_tab3:
+                    st.markdown("#### 🔍 Buscar Misiones")
+                    
+                    # Filtros
+                    col_filt1, col_filt2 = st.columns(2)
+                    
+                    with col_filt1:
+                        # Obtener zonas únicas
+                        all_missions = st.session_state.mission_logger.get_recent_missions(100)
+                        zones = list(set(m['geo_zone'] for m in all_missions))
+                        selected_zone = st.selectbox("Filtrar por zona", ["Todas"] + sorted(zones))
+                    
+                    with col_filt2:
+                        min_survival = st.slider("Supervivencia mínima (%)", 0, 100, 0)
+                    
+                    # Buscar
+                    if st.button("🔍 Buscar", use_container_width=True):
+                        if selected_zone == "Todas":
+                            results = all_missions
+                        else:
+                            results = st.session_state.mission_logger.get_missions_by_zone(selected_zone, 50)
+                        
+                        # Filtrar por supervivencia
+                        results = [m for m in results 
+                                 if m['kpis']['kpi_survival_rate'] >= min_survival]
+                        
+                        st.write(f"**Resultados: {len(results)} misiones**")
+                        
+                        if results:
+                            search_data = []
+                            for m in results:
+                                search_data.append({
+                                    "ID": m['mission_id'][:8] + "...",
+                                    "Zona": m['geo_zone'],
+                                    "Supervivencia": f"{m['kpis']['kpi_survival_rate']:.1f}%",
+                                    "Éxito": "✅" if m['kpis']['mission_success'] else "❌",
+                                    "Fecha": m['timestamp'][:19]
+                                })
+                            
+                            df_search = pd.DataFrame(search_data)
+                            st.dataframe(df_search, use_container_width=True, height=400)
+                        else:
+                            st.info("No se encontraron misiones con esos criterios")
+                
+                with hist_tab4:
+                    st.markdown("#### 📊 Estadísticas Globales")
+                    
+                    # Obtener estadísticas
+                    stats = st.session_state.mission_logger.get_statistics()
+                    
+                    if not stats:
+                        st.info("No hay datos suficientes para estadísticas")
+                    else:
+                        # Métricas principales
+                        col_stat1, col_stat2, col_stat3, col_stat4 = st.columns(4)
+                        
+                        with col_stat1:
+                            st.metric("Total Misiones", stats.get('total_missions', 0))
+                        with col_stat2:
+                            st.metric("Supervivencia Promedio", f"{stats.get('avg_survival_rate', 0):.1f}%")
+                        with col_stat3:
+                            st.metric("Mejor Resultado", f"{stats.get('max_survival_rate', 0):.1f}%")
+                        with col_stat4:
+                            st.metric("Pasos Promedio", f"{stats.get('avg_steps', 0):.0f}")
+                        
+                        st.markdown("---")
+                        
+                        # Gráficos de tendencias
+                        recent_for_trend = st.session_state.mission_logger.get_recent_missions(50)
+                        
+                        if recent_for_trend:
+                            # Timeline de supervivencia
+                            fig_trend = go.Figure()
+                            
+                            fig_trend.add_trace(go.Scatter(
+                                x=list(range(len(recent_for_trend))),
+                                y=[m['kpis']['kpi_survival_rate'] for m in reversed(recent_for_trend)],
+                                mode='lines+markers',
+                                name='Tasa de Supervivencia',
+                                line=dict(color='#667eea', width=2),
+                                marker=dict(size=8)
+                            ))
+                            
+                            fig_trend.update_layout(
+                                title="Tendencia de Supervivencia (Últimas 50 Misiones)",
+                                xaxis_title="Misión (orden cronológico)",
+                                yaxis_title="Tasa de Supervivencia (%)",
+                                height=400
+                            )
+                            
+                            st.plotly_chart(fig_trend, use_container_width=True)
+                            
+                            # Distribución por zona
+                            zones_count = {}
+                            zones_avg = {}
+                            for m in recent_for_trend:
+                                zone = m['geo_zone']
+                                zones_count[zone] = zones_count.get(zone, 0) + 1
+                                if zone not in zones_avg:
+                                    zones_avg[zone] = []
+                                zones_avg[zone].append(m['kpis']['kpi_survival_rate'])
+                            
+                            col_chart1, col_chart2 = st.columns(2)
+                            
+                            with col_chart1:
+                                fig_zones = go.Figure(data=[go.Pie(
+                                    labels=list(zones_count.keys()),
+                                    values=list(zones_count.values()),
+                                    hole=0.4
+                                )])
+                                fig_zones.update_layout(
+                                    title="Distribución por Zona",
+                                    height=400
+                                )
+                                st.plotly_chart(fig_zones, use_container_width=True)
+                            
+                            with col_chart2:
+                                fig_avg_zones = go.Figure(data=[go.Bar(
+                                    x=list(zones_avg.keys()),
+                                    y=[np.mean(v) for v in zones_avg.values()],
+                                    marker_color='#764ba2'
+                                )])
+                                fig_avg_zones.update_layout(
+                                    title="Supervivencia Promedio por Zona",
+                                    yaxis_title="Supervivencia (%)",
+                                    height=400
+                                )
+                                st.plotly_chart(fig_avg_zones, use_container_width=True)
+                        
+                        # Botón para limpiar base de datos
+                        st.markdown("---")
+                        st.markdown("#### ⚠️ Acciones Administrativas")
+                        
+                        col_admin1, col_admin2 = st.columns([3, 1])
+                        
+                        with col_admin2:
+                            if st.button("🗑️ Limpiar Base de Datos", type="secondary"):
+                                if st.session_state.mission_logger.clear_all_missions():
+                                    st.success("✅ Base de datos limpiada")
+                                    st.rerun()
+                                else:
+                                    st.error("❌ Error limpiando base de datos")
     
 else:
     st.info("👈 Ajusta los parámetros en el panel izquierdo y presiona '🚀 Iniciar Misión' para comenzar")
