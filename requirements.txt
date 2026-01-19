@@ -8,3 +8,5 @@ plotly>=5.17.0
 pandas>=1.5.0
 folium>=0.14.0
 streamlit-folium>=0.15.0
+pymongo>=4.6.0
+requests>=2.31.0

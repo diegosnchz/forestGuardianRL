@@ -18,6 +18,34 @@ try:
 except ImportError:
     st_folium = None
 
+# Importar módulo de visualización Atlas-Folium
+try:
+    from atlas_folium_sync import streamlit_atlas_map_viewer, PYMONGO_AVAILABLE, STREAMLIT_FOLIUM_AVAILABLE
+except ImportError:
+    streamlit_atlas_map_viewer = None
+    PYMONGO_AVAILABLE = False
+    STREAMLIT_FOLIUM_AVAILABLE = False
+
+# Importar módulos XAI (Explainable AI)
+try:
+    from xai_explainer import XAIExplainer
+    from xai_visualization import (
+        create_attention_heatmap,
+        create_importance_chart,
+        create_decision_timeline,
+        create_action_distribution_chart,
+        create_confidence_vs_distance_scatter,
+        create_tactical_reasoning_display,
+        create_multi_agent_comparison,
+        create_importance_evolution_heatmap,
+        export_decision_report
+    )
+    import plotly.graph_objects as go
+    import matplotlib.pyplot as plt
+    XAI_AVAILABLE = True
+except ImportError:
+    XAI_AVAILABLE = False
+
 # ============================================================================
 # CONFIGURACIÓN DE STREAMLIT
 # ============================================================================
@@ -86,6 +114,10 @@ if 'selected_bosque' not in st.session_state:
     st.session_state.selected_bosque = None
 if 'gis_scenario' not in st.session_state:
     st.session_state.gis_scenario = None
+if 'xai_decisions' not in st.session_state:
+    st.session_state.xai_decisions = []
+if 'xai_explainer' not in st.session_state:
+    st.session_state.xai_explainer = None
 
 # ============================================================================
 # FUNCIONES AUXILIARES
@@ -102,6 +134,15 @@ def run_mission(env, num_agents, max_steps=100):
     # Inicializar agentes
     agent_blue = TerminatorAgent(role="nearest")
     agent_orange = TerminatorAgent(role="farthest")
+    
+    # Inicializar XAI Explainer
+    if XAI_AVAILABLE:
+        grid_size = env.grid.shape[0]
+        st.session_state.xai_explainer = XAIExplainer(
+            grid_size=grid_size,
+            enable_mongodb=st.session_state.get('mongodb_uri', None) is not None
+        )
+        st.session_state.xai_decisions = []  # Limpiar decisiones anteriores
     
     # Limpiar historia
     st.session_state.frames_history = []
@@ -133,6 +174,36 @@ def run_mission(env, num_agents, max_steps=100):
         # Decisiones de los agentes
         act_blue = agent_blue.decide(obs, env.agent_positions[0])
         act_orange = agent_orange.decide(obs, env.agent_positions[1])
+        
+        # Generar explicaciones XAI si está disponible
+        if XAI_AVAILABLE and st.session_state.xai_explainer:
+            try:
+                # Explicar decisión del agente azul
+                decision_blue = st.session_state.xai_explainer.explain_decision(
+                    agent_id="ALPHA",
+                    agent_role="nearest",
+                    position=env.agent_positions[0],
+                    action=act_blue,
+                    grid_state=obs.copy(),
+                    obs={'step': step},
+                    water_level=env.water_tanks[0]
+                )
+                st.session_state.xai_decisions.append(decision_blue)
+                
+                # Explicar decisión del agente naranja
+                decision_orange = st.session_state.xai_explainer.explain_decision(
+                    agent_id="BRAVO",
+                    agent_role="farthest",
+                    position=env.agent_positions[1],
+                    action=act_orange,
+                    grid_state=obs.copy(),
+                    obs={'step': step},
+                    water_level=env.water_tanks[1]
+                )
+                st.session_state.xai_decisions.append(decision_orange)
+            except Exception as e:
+                # No fallar si hay error en XAI
+                pass
         
         # Ejecutar paso
         obs, _, terminated, _, _ = env.step([act_blue, act_orange])
@@ -403,6 +474,30 @@ max_steps = st.sidebar.slider(
 )
 
 st.sidebar.markdown("---")
+
+# CONFIGURACIÓN DE MONGODB ATLAS
+if streamlit_atlas_map_viewer and PYMONGO_AVAILABLE:
+    with st.sidebar.expander("🗺️ MongoDB Atlas (Opcional)", expanded=False):
+        mongodb_uri = st.text_input(
+            "URI de MongoDB Atlas",
+            type="password",
+            help="mongodb+srv://user:pass@cluster.mongodb.net/...",
+            key="mongodb_uri"
+        )
+        
+        geojson_file = st.text_input(
+            "Archivo GeoJSON",
+            value="zonas_forestales_ejemplo.geojson",
+            help="Ruta al archivo GeoJSON para carga/recarga",
+            key="geojson_file"
+        )
+        
+        if mongodb_uri:
+            st.success("✅ URI configurado")
+        else:
+            st.info("💡 Configura para habilitar mapa geoespacial")
+
+st.sidebar.markdown("---")
 st.sidebar.header("🎯 Acciones")
 
 # Botón de inicio de misión
@@ -579,11 +674,13 @@ if st.session_state.mission_active and st.session_state.env:
         st.markdown("---")
         st.header("📊 Análisis Detallado de la Misión")
         
-        tab1, tab2, tab3, tab4 = st.tabs([
+        tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
             "📈 Series Temporales",
             "🔥 Análisis de Fuego",
             "🚁 Trayectorias de Drones",
-            "📊 Estadísticas Finales"
+            "📊 Estadísticas Finales",
+            "🗺️ Mapa Geoespacial (Atlas)",
+            "🧠 Explicabilidad IA (XAI)"
         ])
         
         with tab1:
@@ -781,6 +878,321 @@ if st.session_state.mission_active and st.session_state.env:
             )
             
             st.plotly_chart(fig_comparison, use_container_width=True)
+        
+        with tab5:
+            st.subheader("🗺️ Mapa Geoespacial - MongoDB Atlas")
+            
+            # Verificar si el módulo está disponible
+            if streamlit_atlas_map_viewer and PYMONGO_AVAILABLE and STREAMLIT_FOLIUM_AVAILABLE:
+                # Obtener configuración de MongoDB desde session_state
+                mongodb_uri = st.session_state.get('mongodb_uri', None)
+                geojson_file = st.session_state.get('geojson_file', 'zonas_forestales_ejemplo.geojson')
+                
+                if not mongodb_uri:
+                    st.warning("⚠️ No hay URI de MongoDB Atlas configurado")
+                    st.info("""
+                    💡 **Para usar el mapa geoespacial:**
+                    
+                    1. Configura tu URI de MongoDB Atlas en la sidebar (panel izquierdo)
+                    2. Si no tienes cuenta, puedes usar el modo demo con el archivo GeoJSON local
+                    3. Lee la documentación en `MONGODB_ATLAS_SETUP.md` para más detalles
+                    """)
+                    
+                    # Modo demo sin conexión
+                    st.markdown("---")
+                    st.markdown("### 📍 Modo Demo (Sin conexión a Atlas)")
+                    
+                    col_demo_a, col_demo_b = st.columns(2)
+                    
+                    with col_demo_a:
+                        if st.button("🗺️ Cargar Mapa Demo", use_container_width=True):
+                            # Llamar al viewer sin URI (modo demo)
+                            streamlit_atlas_map_viewer(
+                                uri=None,
+                                geojson_path=geojson_file,
+                                enable_reload=False
+                            )
+                    
+                    with col_demo_b:
+                        st.info("""
+                        El modo demo carga datos desde el archivo GeoJSON local
+                        sin necesidad de conexión a MongoDB Atlas.
+                        """)
+                else:
+                    # Modo completo con MongoDB Atlas
+                    st.success("✅ Conectado a MongoDB Atlas")
+                    
+                    # Llamar al componente de visualización completo
+                    streamlit_atlas_map_viewer(
+                        uri=mongodb_uri,
+                        geojson_path=geojson_file,
+                        enable_reload=True
+                    )
+            
+            elif not PYMONGO_AVAILABLE:
+                st.error("❌ pymongo no está instalado")
+                st.code("pip install pymongo", language="bash")
+                st.info("Instala pymongo para habilitar la integración con MongoDB Atlas")
+            
+            elif not STREAMLIT_FOLIUM_AVAILABLE:
+                st.error("❌ streamlit-folium no está instalado")
+                st.code("pip install streamlit-folium", language="bash")
+                st.info("Instala streamlit-folium para habilitar la visualización de mapas")
+            
+            else:
+                st.error("❌ El módulo atlas_folium_sync.py no está disponible")
+                st.info("Asegúrate de que el archivo atlas_folium_sync.py esté en el directorio del proyecto")
+        
+        with tab6:
+            st.subheader("🧠 Explicabilidad IA (XAI) - Análisis de Decisiones")
+            
+            # Verificar si XAI está disponible
+            if not XAI_AVAILABLE:
+                st.error("❌ Módulos XAI no disponibles")
+                st.code("pip install plotly matplotlib", language="bash")
+                st.info("Instala las dependencias para habilitar el sistema de explicabilidad")
+            else:
+                # Verificar si hay decisiones XAI guardadas
+                if 'xai_decisions' not in st.session_state or not st.session_state.xai_decisions:
+                    st.warning("⚠️ No hay decisiones XAI disponibles")
+                    st.info("""
+                    💡 **Para generar explicaciones XAI:**
+                    
+                    1. Inicia una misión con los parámetros deseados
+                    2. Durante la simulación, el sistema XAI captura las decisiones
+                    3. Regresa a esta pestaña para ver los análisis detallados
+                    
+                    El sistema XAI explica:
+                    - **Por qué** cada agente tomó una decisión específica
+                    - **Qué factores** influyeron más en la decisión
+                    - **Cómo** se distribuye la atención en el mapa
+                    - **Cuáles** alternativas se consideraron
+                    """)
+                else:
+                    # Obtener decisiones
+                    all_decisions = st.session_state.xai_decisions
+                    
+                    # Agrupar por agente
+                    decisions_by_agent = {}
+                    for decision in all_decisions:
+                        agent_id = decision.agent_id
+                        if agent_id not in decisions_by_agent:
+                            decisions_by_agent[agent_id] = []
+                        decisions_by_agent[agent_id].append(decision)
+                    
+                    # Selector de agente
+                    st.markdown("### 🤖 Seleccionar Agente")
+                    selected_agent = st.selectbox(
+                        "Agente",
+                        options=list(decisions_by_agent.keys()),
+                        format_func=lambda x: f"{x} ({len(decisions_by_agent[x])} decisiones)"
+                    )
+                    
+                    agent_decisions = decisions_by_agent[selected_agent]
+                    
+                    # Tabs internos para diferentes visualizaciones
+                    xai_tab1, xai_tab2, xai_tab3, xai_tab4 = st.tabs([
+                        "📊 Última Decisión",
+                        "📈 Evolución Temporal",
+                        "🔥 Mapas de Atención",
+                        "📉 Análisis Estadístico"
+                    ])
+                    
+                    with xai_tab1:
+                        st.markdown("#### 🎯 Última Decisión del Agente")
+                        
+                        last_decision = agent_decisions[-1]
+                        
+                        # Display HTML del razonamiento táctico
+                        st.markdown(create_tactical_reasoning_display(last_decision), unsafe_allow_html=True)
+                        
+                        # Gráfico de importancia
+                        st.markdown("#### 📊 Importancia de Atributos")
+                        fig_importance = create_importance_chart(
+                            last_decision.importance_scores,
+                            f"Factores de Decisión - {selected_agent}"
+                        )
+                        st.plotly_chart(fig_importance, use_container_width=True)
+                        
+                        # Alternativas consideradas
+                        if last_decision.alternative_actions:
+                            st.markdown("#### 🔄 Alternativas Consideradas")
+                            for alt in last_decision.alternative_actions:
+                                with st.expander(f"🎯 {alt['name']} (Score: {alt['score']*100:.0f}%)"):
+                                    st.write(alt['reason'])
+                        
+                        # Botón de exportación
+                        col_exp1, col_exp2 = st.columns([3, 1])
+                        with col_exp2:
+                            if st.button("💾 Exportar Reporte", key="export_last"):
+                                filename = f"xai_report_{selected_agent}_{last_decision.timestamp.strftime('%Y%m%d_%H%M%S')}.html"
+                                export_decision_report(last_decision, filename)
+                                st.success(f"✅ Reporte exportado: {filename}")
+                    
+                    with xai_tab2:
+                        st.markdown("#### 📈 Evolución de Decisiones")
+                        
+                        # Selector de métrica
+                        col_metric1, col_metric2 = st.columns(2)
+                        with col_metric1:
+                            metric_option = st.selectbox(
+                                "Métrica a visualizar",
+                                ["distance_to_target", "confidence", "water_level"]
+                            )
+                        
+                        # Timeline
+                        fig_timeline = create_decision_timeline(agent_decisions, metric_option)
+                        st.plotly_chart(fig_timeline, use_container_width=True)
+                        
+                        # Distribución de acciones
+                        st.markdown("#### 🎯 Distribución de Acciones")
+                        col_dist1, col_dist2 = st.columns(2)
+                        
+                        with col_dist1:
+                            fig_actions = create_action_distribution_chart(agent_decisions)
+                            st.plotly_chart(fig_actions, use_container_width=True)
+                        
+                        with col_dist2:
+                            fig_scatter = create_confidence_vs_distance_scatter(agent_decisions)
+                            st.plotly_chart(fig_scatter, use_container_width=True)
+                        
+                        # Evolución de importancia
+                        st.markdown("#### 🔥 Evolución de Importancia de Factores")
+                        fig_evolution = create_importance_evolution_heatmap(agent_decisions)
+                        st.plotly_chart(fig_evolution, use_container_width=True)
+                    
+                    with xai_tab3:
+                        st.markdown("#### 🗺️ Mapas de Atención por Paso")
+                        
+                        # Selector de paso
+                        step_index = st.slider(
+                            "Paso de la simulación",
+                            min_value=0,
+                            max_value=len(agent_decisions) - 1,
+                            value=len(agent_decisions) - 1,
+                            key="attention_step_slider"
+                        )
+                        
+                        selected_decision = agent_decisions[step_index]
+                        
+                        # Mostrar información del paso
+                        col_info1, col_info2, col_info3, col_info4 = st.columns(4)
+                        with col_info1:
+                            st.metric("Paso", step_index)
+                        with col_info2:
+                            st.metric("Acción", selected_decision.action_name)
+                        with col_info3:
+                            st.metric("Distancia", f"{selected_decision.distance_to_target:.1f}")
+                        with col_info4:
+                            st.metric("Confianza", f"{selected_decision.confidence*100:.0f}%")
+                        
+                        # Mapa de atención
+                        st.markdown("##### 🔥 Mapa de Atención")
+                        try:
+                            fig_attention = create_attention_heatmap(
+                                selected_decision.attention_map,
+                                selected_decision.grid_state,
+                                selected_decision.position,
+                                f"Atención - {selected_agent} (Paso {step_index})"
+                            )
+                            st.pyplot(fig_attention)
+                            plt.close(fig_attention)
+                        except Exception as e:
+                            st.error(f"Error al generar mapa de atención: {e}")
+                        
+                        # Explicación del paso
+                        st.markdown("##### 💡 Explicación de la Decisión")
+                        with st.expander("Ver explicación completa"):
+                            st.text(selected_decision.explanation)
+                        
+                        st.markdown("##### ⚔️ Razonamiento Táctico")
+                        with st.expander("Ver razonamiento táctico"):
+                            st.text(selected_decision.tactical_reasoning)
+                    
+                    with xai_tab4:
+                        st.markdown("#### 📊 Análisis Estadístico Multi-Agente")
+                        
+                        # Comparación multi-agente
+                        if len(decisions_by_agent) > 1:
+                            st.markdown("##### 🤝 Comparación de Agentes")
+                            fig_comparison = create_multi_agent_comparison(decisions_by_agent)
+                            st.plotly_chart(fig_comparison, use_container_width=True)
+                        
+                        # Estadísticas generales
+                        st.markdown("##### 📈 Estadísticas del Agente")
+                        
+                        total_decisions = len(agent_decisions)
+                        avg_confidence = np.mean([d.confidence for d in agent_decisions])
+                        avg_distance = np.mean([d.distance_to_target for d in agent_decisions])
+                        
+                        # Contar acciones
+                        action_counts = {}
+                        for d in agent_decisions:
+                            action_counts[d.action_name] = action_counts.get(d.action_name, 0) + 1
+                        most_common_action = max(action_counts.items(), key=lambda x: x[1])
+                        
+                        col_stat1, col_stat2, col_stat3, col_stat4 = st.columns(4)
+                        
+                        with col_stat1:
+                            st.metric("Total Decisiones", total_decisions)
+                        with col_stat2:
+                            st.metric("Confianza Promedio", f"{avg_confidence*100:.1f}%")
+                        with col_stat3:
+                            st.metric("Distancia Promedio", f"{avg_distance:.1f}")
+                        with col_stat4:
+                            st.metric("Acción Más Común", f"{most_common_action[0]}")
+                        
+                        # Tabla de decisiones
+                        st.markdown("##### 📋 Historial de Decisiones")
+                        
+                        df_decisions = pd.DataFrame([
+                            {
+                                "Paso": i,
+                                "Acción": d.action_name,
+                                "Posición": f"({d.position[0]}, {d.position[1]})",
+                                "Distancia": f"{d.distance_to_target:.1f}",
+                                "Confianza": f"{d.confidence*100:.0f}%",
+                                "Agua": d.water_level,
+                                "Timestamp": d.timestamp.strftime("%H:%M:%S")
+                            }
+                            for i, d in enumerate(agent_decisions)
+                        ])
+                        
+                        st.dataframe(df_decisions, use_container_width=True, height=400)
+                        
+                        # Exportar todas las decisiones
+                        col_exp_all1, col_exp_all2 = st.columns([3, 1])
+                        with col_exp_all2:
+                            if st.button("💾 Exportar Todo (JSON)", key="export_all_json"):
+                                import json
+                                from datetime import datetime
+                                
+                                # Preparar datos para JSON
+                                export_data = {
+                                    "agent_id": selected_agent,
+                                    "total_decisions": len(agent_decisions),
+                                    "export_timestamp": datetime.now().isoformat(),
+                                    "decisions": [
+                                        {
+                                            "step": i,
+                                            "action": d.action,
+                                            "action_name": d.action_name,
+                                            "position": d.position,
+                                            "distance_to_target": d.distance_to_target,
+                                            "confidence": d.confidence,
+                                            "water_level": d.water_level,
+                                            "importance_scores": d.importance_scores,
+                                            "timestamp": d.timestamp.isoformat()
+                                        }
+                                        for i, d in enumerate(agent_decisions)
+                                    ]
+                                }
+                                
+                                filename = f"xai_history_{selected_agent}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+                                with open(filename, 'w', encoding='utf-8') as f:
+                                    json.dump(export_data, f, indent=2, ensure_ascii=False)
+                                
+                                st.success(f"✅ Historial exportado: {filename}")
     
 else:
     st.info("👈 Ajusta los parámetros en el panel izquierdo y presiona '🚀 Iniciar Misión' para comenzar")

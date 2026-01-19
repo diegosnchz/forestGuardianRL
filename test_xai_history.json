@@ -1,0 +1,535 @@
+{
+  "statistics": {
+    "total_decisions": 24,
+    "actions_distribution": {
+      "1": 4,
+      "0": 10,
+      "5": 2,
+      "6": 3,
+      "3": 5
+    },
+    "agent_stats": {
+      "ALPHA": {
+        "total": 19,
+        "1": 4,
+        "0": 10,
+        "5": 2,
+        "6": 3
+      },
+      "BRAVO": {
+        "total": 5,
+        "3": 5
+      }
+    }
+  },
+  "histories": {
+    "ALPHA": [
+      {
+        "timestamp": "2026-01-19T17:34:20.609080",
+        "agent_id": "ALPHA",
+        "agent_role": "nearest",
+        "position": [
+          5,
+          5
+        ],
+        "action": 1,
+        "action_name": "Mover Abajo",
+        "explanation": "🤖 **ALPHA (Ataque Rápido)** en posición (5, 5)\n\n**Decisión:** Mover Abajo\n\n**Análisis del Entorno:**\n• 3 foco(s) de incendio detectado(s)\n• Fuego más cercano a 2 celdas en (5, 3)\n• 6 árboles en radio de 3 celdas\n\n**Motivo de la Decisión:**\n• Desplazándose hacia Sur ⬇️ para alcanzar objetivo\n• Distancia restante: 2 celdas\n• **Estrategia Alpha:** Prioridad al fuego más cercano (2 celdas)\n\n**Factores Clave (Importancia):**\n• Proximidad Fuego: ██████████ 100%\n• Centralidad: ██████████ 100%\n• Cantidad Fuegos: ██████ 60%\n",
+        "tactical_reasoning": "**🔵 TÁCTICA ALPHA - RESPUESTA RÁPIDA**\n\n**Doctrina Operacional:**\n• Minimizar tiempo de respuesta\n• Priorizar amenazas inmediatas\n• Supresión directa de fuegos\n\n**Estado:** 🏃 Aproximación rápida\n**ETA:** 2 movimientos\n",
+        "importance_scores": {
+          "proximidad_fuego": 1.0,
+          "cantidad_fuegos": 0.6,
+          "densidad_arboles_local": 0.4,
+          "centralidad": 1.0
+        },
+        "distance_to_target": 2.0,
+        "confidence": 0.625
+      },
+      {
+        "timestamp": "2026-01-19T17:34:21.158342",
+        "agent_id": "ALPHA",
+        "agent_role": "nearest",
+        "position": [
+          5,
+          5
+        ],
+        "action": 1,
+        "action_name": "Mover Abajo",
+        "explanation": "🤖 **ALPHA (Ataque Rápido)** en posición (5, 5)\n\n**Decisión:** Mover Abajo\n\n**Análisis del Entorno:**\n• 3 foco(s) de incendio detectado(s)\n• Fuego más cercano a 2 celdas en (5, 3)\n• 6 árboles en radio de 3 celdas\n\n**Motivo de la Decisión:**\n• Desplazándose hacia Sur ⬇️ para alcanzar objetivo\n• Distancia restante: 2 celdas\n• **Estrategia Alpha:** Prioridad al fuego más cercano (2 celdas)\n\n**Factores Clave (Importancia):**\n• Proximidad Fuego: ██████████ 100%\n• Centralidad: ██████████ 100%\n• Cantidad Fuegos: ██████ 60%\n",
+        "tactical_reasoning": "**🔵 TÁCTICA ALPHA - RESPUESTA RÁPIDA**\n\n**Doctrina Operacional:**\n• Minimizar tiempo de respuesta\n• Priorizar amenazas inmediatas\n• Supresión directa de fuegos\n\n**Estado:** 🏃 Aproximación rápida\n**ETA:** 2 movimientos\n",
+        "importance_scores": {
+          "proximidad_fuego": 1.0,
+          "cantidad_fuegos": 0.6,
+          "densidad_arboles_local": 0.4,
+          "centralidad": 1.0
+        },
+        "distance_to_target": 2.0,
+        "confidence": 0.625
+      },
+      {
+        "timestamp": "2026-01-19T17:34:21.159051",
+        "agent_id": "ALPHA",
+        "agent_role": "nearest",
+        "position": [
+          5,
+          4
+        ],
+        "action": 1,
+        "action_name": "Mover Abajo",
+        "explanation": "🤖 **ALPHA (Ataque Rápido)** en posición (5, 4)\n\n**Decisión:** Mover Abajo\n\n**Análisis del Entorno:**\n• 3 foco(s) de incendio detectado(s)\n• Fuego más cercano a 1 celdas en (5, 3)\n• 8 árboles en radio de 3 celdas\n\n**Motivo de la Decisión:**\n• Ajustando posición Sur ⬇️ para ataque óptimo\n• **Estrategia Alpha:** Prioridad al fuego más cercano (1 celdas)\n\n**Factores Clave (Importancia):**\n• Proximidad Fuego: ██████████ 100%\n• Centralidad: █████████ 93%\n• Cantidad Fuegos: ██████ 60%\n",
+        "tactical_reasoning": "**🔵 TÁCTICA ALPHA - RESPUESTA RÁPIDA**\n\n**Doctrina Operacional:**\n• Minimizar tiempo de respuesta\n• Priorizar amenazas inmediatas\n• Supresión directa de fuegos\n\n**Estado:** ✅ En posición de ataque\n**Acción:** Extinción directa del foco\n",
+        "importance_scores": {
+          "proximidad_fuego": 1.0,
+          "cantidad_fuegos": 0.6,
+          "densidad_arboles_local": 0.5333333333333333,
+          "centralidad": 0.9333333333333333
+        },
+        "distance_to_target": 1.0,
+        "confidence": 0.6166666666666667
+      },
+      {
+        "timestamp": "2026-01-19T17:34:21.159385",
+        "agent_id": "ALPHA",
+        "agent_role": "nearest",
+        "position": [
+          5,
+          3
+        ],
+        "action": 0,
+        "action_name": "Mover Arriba",
+        "explanation": "🤖 **ALPHA (Ataque Rápido)** en posición (5, 3)\n\n**Decisión:** Mover Arriba\n\n**Análisis del Entorno:**\n• 3 foco(s) de incendio detectado(s)\n• Fuego más cercano a 0 celdas en (5, 3)\n• 8 árboles en radio de 3 celdas\n\n**Motivo de la Decisión:**\n• Ajustando posición Norte ⬆️ para ataque óptimo\n• **Estrategia Alpha:** Prioridad al fuego más cercano (0 celdas)\n\n**Factores Clave (Importancia):**\n• Proximidad Fuego: ██████████ 100%\n• Centralidad: ████████ 87%\n• Cantidad Fuegos: ██████ 60%\n",
+        "tactical_reasoning": "**🔵 TÁCTICA ALPHA - RESPUESTA RÁPIDA**\n\n**Doctrina Operacional:**\n• Minimizar tiempo de respuesta\n• Priorizar amenazas inmediatas\n• Supresión directa de fuegos\n\n**Estado:** ✅ En posición de ataque\n**Acción:** Extinción directa del foco\n",
+        "importance_scores": {
+          "proximidad_fuego": 1.0,
+          "cantidad_fuegos": 0.6,
+          "densidad_arboles_local": 0.5333333333333333,
+          "centralidad": 0.8666666666666667
+        },
+        "distance_to_target": 0.0,
+        "confidence": 0.625
+      },
+      {
+        "timestamp": "2026-01-19T17:34:21.160009",
+        "agent_id": "ALPHA",
+        "agent_role": "nearest",
+        "position": [
+          4,
+          3
+        ],
+        "action": 0,
+        "action_name": "Mover Arriba",
+        "explanation": "🤖 **ALPHA (Ataque Rápido)** en posición (4, 3)\n\n**Decisión:** Mover Arriba\n\n**Análisis del Entorno:**\n• 3 foco(s) de incendio detectado(s)\n• Fuego más cercano a 1 celdas en (5, 3)\n• 7 árboles en radio de 3 celdas\n\n**Motivo de la Decisión:**\n• Ajustando posición Norte ⬆️ para ataque óptimo\n• **Estrategia Alpha:** Prioridad al fuego más cercano (1 celdas)\n\n**Factores Clave (Importancia):**\n• Proximidad Fuego: ██████████ 100%\n• Centralidad: ████████ 80%\n• Cantidad Fuegos: ██████ 60%\n",
+        "tactical_reasoning": "**🔵 TÁCTICA ALPHA - RESPUESTA RÁPIDA**\n\n**Doctrina Operacional:**\n• Minimizar tiempo de respuesta\n• Priorizar amenazas inmediatas\n• Supresión directa de fuegos\n\n**Estado:** ✅ En posición de ataque\n**Acción:** Extinción directa del foco\n",
+        "importance_scores": {
+          "proximidad_fuego": 1.0,
+          "cantidad_fuegos": 0.6,
+          "densidad_arboles_local": 0.4666666666666667,
+          "centralidad": 0.8
+        },
+        "distance_to_target": 1.0,
+        "confidence": 0.6416666666666666
+      },
+      {
+        "timestamp": "2026-01-19T17:34:21.160416",
+        "agent_id": "ALPHA",
+        "agent_role": "nearest",
+        "position": [
+          3,
+          3
+        ],
+        "action": 1,
+        "action_name": "Mover Abajo",
+        "explanation": "🤖 **ALPHA (Ataque Rápido)** en posición (3, 3)\n\n**Decisión:** Mover Abajo\n\n**Análisis del Entorno:**\n• 3 foco(s) de incendio detectado(s)\n• Fuego más cercano a 2 celdas en (2, 2)\n• 6 árboles en radio de 3 celdas\n\n**Motivo de la Decisión:**\n• Desplazándose hacia Sur ⬇️ para alcanzar objetivo\n• Distancia restante: 2 celdas\n• **Estrategia Alpha:** Prioridad al fuego más cercano (2 celdas)\n\n**Factores Clave (Importancia):**\n• Proximidad Fuego: ██████████ 100%\n• Centralidad: ███████ 73%\n• Cantidad Fuegos: ██████ 60%\n",
+        "tactical_reasoning": "**🔵 TÁCTICA ALPHA - RESPUESTA RÁPIDA**\n\n**Doctrina Operacional:**\n• Minimizar tiempo de respuesta\n• Priorizar amenazas inmediatas\n• Supresión directa de fuegos\n\n**Estado:** 🏃 Aproximación rápida\n**ETA:** 2 movimientos\n",
+        "importance_scores": {
+          "proximidad_fuego": 1.0,
+          "cantidad_fuegos": 0.6,
+          "densidad_arboles_local": 0.4,
+          "centralidad": 0.7333333333333334
+        },
+        "distance_to_target": 2.0,
+        "confidence": 0.6583333333333333
+      },
+      {
+        "timestamp": "2026-01-19T17:34:21.160774",
+        "agent_id": "ALPHA",
+        "agent_role": "nearest",
+        "position": [
+          3,
+          2
+        ],
+        "action": 5,
+        "action_name": "Apagar Fuego",
+        "explanation": "🤖 **ALPHA (Ataque Rápido)** en posición (3, 2)\n\n**Decisión:** Apagar Fuego\n\n**Análisis del Entorno:**\n• 3 foco(s) de incendio detectado(s)\n• Fuego más cercano a 1 celdas en (2, 2)\n• 6 árboles en radio de 3 celdas\n\n**Motivo de la Decisión:**\n• ¡Fuego al alcance! Activando sistema de extinción\n• Radio de acción: 3x3 celdas\n• Objetivo en (2, 2)\n\n**Factores Clave (Importancia):**\n• Proximidad Fuego: ██████████ 100%\n• Centralidad: ██████ 67%\n• Cantidad Fuegos: ██████ 60%\n",
+        "tactical_reasoning": "**🔵 TÁCTICA ALPHA - RESPUESTA RÁPIDA**\n\n**Doctrina Operacional:**\n• Minimizar tiempo de respuesta\n• Priorizar amenazas inmediatas\n• Supresión directa de fuegos\n\n**Estado:** ✅ En posición de ataque\n**Acción:** Extinción directa del foco\n",
+        "importance_scores": {
+          "proximidad_fuego": 1.0,
+          "cantidad_fuegos": 0.6,
+          "densidad_arboles_local": 0.4,
+          "centralidad": 0.6666666666666667
+        },
+        "distance_to_target": 1.0,
+        "confidence": 0.6666666666666666
+      },
+      {
+        "timestamp": "2026-01-19T17:34:21.160931",
+        "agent_id": "ALPHA",
+        "agent_role": "nearest",
+        "position": [
+          2,
+          2
+        ],
+        "action": 5,
+        "action_name": "Apagar Fuego",
+        "explanation": "🤖 **ALPHA (Ataque Rápido)** en posición (2, 2)\n\n**Decisión:** Apagar Fuego\n\n**Análisis del Entorno:**\n• 3 foco(s) de incendio detectado(s)\n• Fuego más cercano a 0 celdas en (2, 2)\n• 5 árboles en radio de 3 celdas\n\n**Motivo de la Decisión:**\n• ¡Fuego al alcance! Activando sistema de extinción\n• Radio de acción: 3x3 celdas\n• Objetivo en (2, 2)\n\n**Factores Clave (Importancia):**\n• Proximidad Fuego: ██████████ 100%\n• Cantidad Fuegos: ██████ 60%\n• Centralidad: ██████ 60%\n",
+        "tactical_reasoning": "**🔵 TÁCTICA ALPHA - RESPUESTA RÁPIDA**\n\n**Doctrina Operacional:**\n• Minimizar tiempo de respuesta\n• Priorizar amenazas inmediatas\n• Supresión directa de fuegos\n\n**Estado:** ✅ En posición de ataque\n**Acción:** Extinción directa del foco\n",
+        "importance_scores": {
+          "proximidad_fuego": 1.0,
+          "cantidad_fuegos": 0.6,
+          "densidad_arboles_local": 0.3333333333333333,
+          "centralidad": 0.6
+        },
+        "distance_to_target": 0.0,
+        "confidence": 0.6833333333333333
+      },
+      {
+        "timestamp": "2026-01-19T17:34:21.161124",
+        "agent_id": "ALPHA",
+        "agent_role": "nearest",
+        "position": [
+          2,
+          2
+        ],
+        "action": 6,
+        "action_name": "Crear Cortafuegos",
+        "explanation": "🤖 **ALPHA (Ataque Rápido)** en posición (2, 2)\n\n**Decisión:** Crear Cortafuegos\n\n**Análisis del Entorno:**\n• 3 foco(s) de incendio detectado(s)\n• Fuego más cercano a 0 celdas en (2, 2)\n• 5 árboles en radio de 3 celdas\n\n**Motivo de la Decisión:**\n• Creando barrera cortafuegos\n• 10 árboles en riesgo inmediato\n• Removiendo vegetación para detener propagación\n\n**Factores Clave (Importancia):**\n• Proximidad Fuego: ██████████ 100%\n• Cantidad Fuegos: ██████ 60%\n• Centralidad: ██████ 60%\n",
+        "tactical_reasoning": "**🔵 TÁCTICA ALPHA - RESPUESTA RÁPIDA**\n\n**Doctrina Operacional:**\n• Minimizar tiempo de respuesta\n• Priorizar amenazas inmediatas\n• Supresión directa de fuegos\n\n**Estado:** ✅ En posición de ataque\n**Acción:** Extinción directa del foco\n",
+        "importance_scores": {
+          "proximidad_fuego": 1.0,
+          "cantidad_fuegos": 0.6,
+          "densidad_arboles_local": 0.3333333333333333,
+          "centralidad": 0.6
+        },
+        "distance_to_target": 0.0,
+        "confidence": 0.6833333333333333
+      },
+      {
+        "timestamp": "2026-01-19T17:34:21.161304",
+        "agent_id": "ALPHA",
+        "agent_role": "nearest",
+        "position": [
+          2,
+          2
+        ],
+        "action": 6,
+        "action_name": "Crear Cortafuegos",
+        "explanation": "🤖 **ALPHA (Ataque Rápido)** en posición (2, 2)\n\n**Decisión:** Crear Cortafuegos\n\n**Análisis del Entorno:**\n• 3 foco(s) de incendio detectado(s)\n• Fuego más cercano a 0 celdas en (2, 2)\n• 5 árboles en radio de 3 celdas\n\n**Motivo de la Decisión:**\n• Creando barrera cortafuegos\n• 10 árboles en riesgo inmediato\n• Removiendo vegetación para detener propagación\n\n**Factores Clave (Importancia):**\n• Proximidad Fuego: ██████████ 100%\n• Cantidad Fuegos: ██████ 60%\n• Centralidad: ██████ 60%\n",
+        "tactical_reasoning": "**🔵 TÁCTICA ALPHA - RESPUESTA RÁPIDA**\n\n**Doctrina Operacional:**\n• Minimizar tiempo de respuesta\n• Priorizar amenazas inmediatas\n• Supresión directa de fuegos\n\n**Estado:** ✅ En posición de ataque\n**Acción:** Extinción directa del foco\n",
+        "importance_scores": {
+          "proximidad_fuego": 1.0,
+          "cantidad_fuegos": 0.6,
+          "densidad_arboles_local": 0.3333333333333333,
+          "centralidad": 0.6
+        },
+        "distance_to_target": 0.0,
+        "confidence": 0.6833333333333333
+      },
+      {
+        "timestamp": "2026-01-19T17:34:21.161474",
+        "agent_id": "ALPHA",
+        "agent_role": "nearest",
+        "position": [
+          2,
+          2
+        ],
+        "action": 6,
+        "action_name": "Crear Cortafuegos",
+        "explanation": "🤖 **ALPHA (Ataque Rápido)** en posición (2, 2)\n\n**Decisión:** Crear Cortafuegos\n\n**Análisis del Entorno:**\n• 3 foco(s) de incendio detectado(s)\n• Fuego más cercano a 0 celdas en (2, 2)\n• 5 árboles en radio de 3 celdas\n\n**Motivo de la Decisión:**\n• Creando barrera cortafuegos\n• 10 árboles en riesgo inmediato\n• Removiendo vegetación para detener propagación\n\n**Factores Clave (Importancia):**\n• Proximidad Fuego: ██████████ 100%\n• Cantidad Fuegos: ██████ 60%\n• Centralidad: ██████ 60%\n",
+        "tactical_reasoning": "**🔵 TÁCTICA ALPHA - RESPUESTA RÁPIDA**\n\n**Doctrina Operacional:**\n• Minimizar tiempo de respuesta\n• Priorizar amenazas inmediatas\n• Supresión directa de fuegos\n\n**Estado:** ✅ En posición de ataque\n**Acción:** Extinción directa del foco\n",
+        "importance_scores": {
+          "proximidad_fuego": 1.0,
+          "cantidad_fuegos": 0.6,
+          "densidad_arboles_local": 0.3333333333333333,
+          "centralidad": 0.6
+        },
+        "distance_to_target": 0.0,
+        "confidence": 0.6833333333333333
+      },
+      {
+        "timestamp": "2026-01-19T17:34:21.243889",
+        "agent_id": "ALPHA",
+        "agent_role": "nearest",
+        "position": [
+          5,
+          5
+        ],
+        "action": 0,
+        "action_name": "Mover Arriba",
+        "explanation": "🤖 **ALPHA (Ataque Rápido)** en posición (5, 5)\n\n**Decisión:** Mover Arriba\n\n**Análisis del Entorno:**\n• 3 foco(s) de incendio detectado(s)\n• Fuego más cercano a 2 celdas en (5, 3)\n• 7 árboles en radio de 3 celdas\n\n**Motivo de la Decisión:**\n• Desplazándose hacia Norte ⬆️ para alcanzar objetivo\n• Distancia restante: 2 celdas\n• **Estrategia Alpha:** Prioridad al fuego más cercano (2 celdas)\n\n**Factores Clave (Importancia):**\n• Proximidad Fuego: ██████████ 100%\n• Centralidad: ██████████ 100%\n• Cantidad Fuegos: ██████ 60%\n",
+        "tactical_reasoning": "**🔵 TÁCTICA ALPHA - RESPUESTA RÁPIDA**\n\n**Doctrina Operacional:**\n• Minimizar tiempo de respuesta\n• Priorizar amenazas inmediatas\n• Supresión directa de fuegos\n\n**Estado:** 🏃 Aproximación rápida\n**ETA:** 2 movimientos\n",
+        "importance_scores": {
+          "proximidad_fuego": 1.0,
+          "cantidad_fuegos": 0.6,
+          "densidad_arboles_local": 0.4666666666666667,
+          "centralidad": 1.0
+        },
+        "distance_to_target": 2.0,
+        "confidence": 0.6166666666666667
+      },
+      {
+        "timestamp": "2026-01-19T17:34:21.244586",
+        "agent_id": "ALPHA",
+        "agent_role": "nearest",
+        "position": [
+          4,
+          5
+        ],
+        "action": 0,
+        "action_name": "Mover Arriba",
+        "explanation": "🤖 **ALPHA (Ataque Rápido)** en posición (4, 5)\n\n**Decisión:** Mover Arriba\n\n**Análisis del Entorno:**\n• 3 foco(s) de incendio detectado(s)\n• Fuego más cercano a 3 celdas en (5, 3)\n• 7 árboles en radio de 3 celdas\n\n**Motivo de la Decisión:**\n• Desplazándose hacia Norte ⬆️ para alcanzar objetivo\n• Distancia restante: 3 celdas\n• **Estrategia Alpha:** Prioridad al fuego más cercano (3 celdas)\n\n**Factores Clave (Importancia):**\n• Centralidad: ██████████ 100%\n• Proximidad Fuego: ████████ 86%\n• Cantidad Fuegos: ██████ 64%\n",
+        "tactical_reasoning": "**🔵 TÁCTICA ALPHA - RESPUESTA RÁPIDA**\n\n**Doctrina Operacional:**\n• Minimizar tiempo de respuesta\n• Priorizar amenazas inmediatas\n• Supresión directa de fuegos\n\n**Estado:** 🏃 Aproximación rápida\n**ETA:** 3 movimientos\n",
+        "importance_scores": {
+          "proximidad_fuego": 0.8571428571428572,
+          "cantidad_fuegos": 0.6428571428571428,
+          "densidad_arboles_local": 0.5,
+          "centralidad": 1.0
+        },
+        "distance_to_target": 3.0,
+        "confidence": 0.625
+      },
+      {
+        "timestamp": "2026-01-19T17:34:21.245281",
+        "agent_id": "ALPHA",
+        "agent_role": "nearest",
+        "position": [
+          3,
+          5
+        ],
+        "action": 0,
+        "action_name": "Mover Arriba",
+        "explanation": "🤖 **ALPHA (Ataque Rápido)** en posición (3, 5)\n\n**Decisión:** Mover Arriba\n\n**Análisis del Entorno:**\n• 3 foco(s) de incendio detectado(s)\n• Fuego más cercano a 4 celdas en (2, 2)\n• 5 árboles en radio de 3 celdas\n\n**Motivo de la Decisión:**\n• Desplazándose hacia Norte ⬆️ para alcanzar objetivo\n• Distancia restante: 4 celdas\n• **Estrategia Alpha:** Prioridad al fuego más cercano (4 celdas)\n\n**Factores Clave (Importancia):**\n• Centralidad: ██████████ 100%\n• Proximidad Fuego: █████████ 92%\n• Cantidad Fuegos: ██████ 69%\n",
+        "tactical_reasoning": "**🔵 TÁCTICA ALPHA - RESPUESTA RÁPIDA**\n\n**Doctrina Operacional:**\n• Minimizar tiempo de respuesta\n• Priorizar amenazas inmediatas\n• Supresión directa de fuegos\n\n**Estado:** 🚁 Desplazamiento hacia zona caliente\n**Distancia:** 4 celdas\n",
+        "importance_scores": {
+          "proximidad_fuego": 0.9230769230769231,
+          "cantidad_fuegos": 0.6923076923076923,
+          "densidad_arboles_local": 0.3846153846153846,
+          "centralidad": 1.0
+        },
+        "distance_to_target": 4.0,
+        "confidence": 0.625
+      },
+      {
+        "timestamp": "2026-01-19T17:34:21.245912",
+        "agent_id": "ALPHA",
+        "agent_role": "nearest",
+        "position": [
+          2,
+          5
+        ],
+        "action": 0,
+        "action_name": "Mover Arriba",
+        "explanation": "🤖 **ALPHA (Ataque Rápido)** en posición (2, 5)\n\n**Decisión:** Mover Arriba\n\n**Análisis del Entorno:**\n• 3 foco(s) de incendio detectado(s)\n• Fuego más cercano a 3 celdas en (2, 2)\n• 4 árboles en radio de 3 celdas\n\n**Motivo de la Decisión:**\n• Desplazándose hacia Norte ⬆️ para alcanzar objetivo\n• Distancia restante: 3 celdas\n• **Estrategia Alpha:** Prioridad al fuego más cercano (3 celdas)\n\n**Factores Clave (Importancia):**\n• Proximidad Fuego: ██████████ 100%\n• Centralidad: ██████████ 100%\n• Cantidad Fuegos: ███████ 75%\n",
+        "tactical_reasoning": "**🔵 TÁCTICA ALPHA - RESPUESTA RÁPIDA**\n\n**Doctrina Operacional:**\n• Minimizar tiempo de respuesta\n• Priorizar amenazas inmediatas\n• Supresión directa de fuegos\n\n**Estado:** 🏃 Aproximación rápida\n**ETA:** 3 movimientos\n",
+        "importance_scores": {
+          "proximidad_fuego": 1.0,
+          "cantidad_fuegos": 0.7499999999999999,
+          "densidad_arboles_local": 0.3333333333333333,
+          "centralidad": 1.0
+        },
+        "distance_to_target": 3.0,
+        "confidence": 0.6145833333333334
+      },
+      {
+        "timestamp": "2026-01-19T17:34:21.246385",
+        "agent_id": "ALPHA",
+        "agent_role": "nearest",
+        "position": [
+          1,
+          5
+        ],
+        "action": 0,
+        "action_name": "Mover Arriba",
+        "explanation": "🤖 **ALPHA (Ataque Rápido)** en posición (1, 5)\n\n**Decisión:** Mover Arriba\n\n**Análisis del Entorno:**\n• 3 foco(s) de incendio detectado(s)\n• Fuego más cercano a 4 celdas en (2, 2)\n• 4 árboles en radio de 3 celdas\n\n**Motivo de la Decisión:**\n• Desplazándose hacia Norte ⬆️ para alcanzar objetivo\n• Distancia restante: 4 celdas\n• **Estrategia Alpha:** Prioridad al fuego más cercano (4 celdas)\n\n**Factores Clave (Importancia):**\n• Proximidad Fuego: ██████████ 100%\n• Centralidad: █████████ 92%\n• Cantidad Fuegos: ███████ 75%\n",
+        "tactical_reasoning": "**🔵 TÁCTICA ALPHA - RESPUESTA RÁPIDA**\n\n**Doctrina Operacional:**\n• Minimizar tiempo de respuesta\n• Priorizar amenazas inmediatas\n• Supresión directa de fuegos\n\n**Estado:** 🚁 Desplazamiento hacia zona caliente\n**Distancia:** 4 celdas\n",
+        "importance_scores": {
+          "proximidad_fuego": 1.0,
+          "cantidad_fuegos": 0.7499999999999999,
+          "densidad_arboles_local": 0.3333333333333333,
+          "centralidad": 0.9166666666666667
+        },
+        "distance_to_target": 4.0,
+        "confidence": 0.625
+      },
+      {
+        "timestamp": "2026-01-19T17:34:21.273453",
+        "agent_id": "ALPHA",
+        "agent_role": "nearest",
+        "position": [
+          5,
+          5
+        ],
+        "action": 0,
+        "action_name": "Mover Arriba",
+        "explanation": "🤖 **ALPHA (Ataque Rápido)** en posición (5, 5)\n\n**Decisión:** Mover Arriba\n\n**Análisis del Entorno:**\n• 3 foco(s) de incendio detectado(s)\n• Fuego más cercano a 2 celdas en (5, 3)\n• 8 árboles en radio de 3 celdas\n\n**Motivo de la Decisión:**\n• Desplazándose hacia Norte ⬆️ para alcanzar objetivo\n• Distancia restante: 2 celdas\n• **Estrategia Alpha:** Prioridad al fuego más cercano (2 celdas)\n\n**Factores Clave (Importancia):**\n• Proximidad Fuego: ██████████ 100%\n• Centralidad: ██████████ 100%\n• Cantidad Fuegos: ██████ 60%\n",
+        "tactical_reasoning": "**🔵 TÁCTICA ALPHA - RESPUESTA RÁPIDA**\n\n**Doctrina Operacional:**\n• Minimizar tiempo de respuesta\n• Priorizar amenazas inmediatas\n• Supresión directa de fuegos\n\n**Estado:** 🏃 Aproximación rápida\n**ETA:** 2 movimientos\n",
+        "importance_scores": {
+          "proximidad_fuego": 1.0,
+          "cantidad_fuegos": 0.6,
+          "densidad_arboles_local": 0.5333333333333333,
+          "centralidad": 1.0
+        },
+        "distance_to_target": 2.0,
+        "confidence": 0.6083333333333334
+      },
+      {
+        "timestamp": "2026-01-19T17:34:21.274112",
+        "agent_id": "ALPHA",
+        "agent_role": "nearest",
+        "position": [
+          5,
+          4
+        ],
+        "action": 0,
+        "action_name": "Mover Arriba",
+        "explanation": "🤖 **ALPHA (Ataque Rápido)** en posición (5, 4)\n\n**Decisión:** Mover Arriba\n\n**Análisis del Entorno:**\n• 3 foco(s) de incendio detectado(s)\n• Fuego más cercano a 1 celdas en (5, 3)\n• 7 árboles en radio de 3 celdas\n\n**Motivo de la Decisión:**\n• Ajustando posición Norte ⬆️ para ataque óptimo\n• **Estrategia Alpha:** Prioridad al fuego más cercano (1 celdas)\n\n**Factores Clave (Importancia):**\n• Proximidad Fuego: ██████████ 100%\n• Centralidad: █████████ 93%\n• Cantidad Fuegos: ██████ 60%\n",
+        "tactical_reasoning": "**🔵 TÁCTICA ALPHA - RESPUESTA RÁPIDA**\n\n**Doctrina Operacional:**\n• Minimizar tiempo de respuesta\n• Priorizar amenazas inmediatas\n• Supresión directa de fuegos\n\n**Estado:** ✅ En posición de ataque\n**Acción:** Extinción directa del foco\n",
+        "importance_scores": {
+          "proximidad_fuego": 1.0,
+          "cantidad_fuegos": 0.6,
+          "densidad_arboles_local": 0.4666666666666667,
+          "centralidad": 0.9333333333333333
+        },
+        "distance_to_target": 1.0,
+        "confidence": 0.625
+      },
+      {
+        "timestamp": "2026-01-19T17:34:21.274432",
+        "agent_id": "ALPHA",
+        "agent_role": "nearest",
+        "position": [
+          5,
+          3
+        ],
+        "action": 0,
+        "action_name": "Mover Arriba",
+        "explanation": "🤖 **ALPHA (Ataque Rápido)** en posición (5, 3)\n\n**Decisión:** Mover Arriba\n\n**Análisis del Entorno:**\n• 3 foco(s) de incendio detectado(s)\n• Fuego más cercano a 0 celdas en (5, 3)\n• 6 árboles en radio de 3 celdas\n\n**Motivo de la Decisión:**\n• Ajustando posición Norte ⬆️ para ataque óptimo\n• **Estrategia Alpha:** Prioridad al fuego más cercano (0 celdas)\n\n**Factores Clave (Importancia):**\n• Proximidad Fuego: ██████████ 100%\n• Centralidad: ████████ 87%\n• Cantidad Fuegos: ██████ 60%\n",
+        "tactical_reasoning": "**🔵 TÁCTICA ALPHA - RESPUESTA RÁPIDA**\n\n**Doctrina Operacional:**\n• Minimizar tiempo de respuesta\n• Priorizar amenazas inmediatas\n• Supresión directa de fuegos\n\n**Estado:** ✅ En posición de ataque\n**Acción:** Extinción directa del foco\n",
+        "importance_scores": {
+          "proximidad_fuego": 1.0,
+          "cantidad_fuegos": 0.6,
+          "densidad_arboles_local": 0.4,
+          "centralidad": 0.8666666666666667
+        },
+        "distance_to_target": 0.0,
+        "confidence": 0.6416666666666666
+      }
+    ],
+    "BRAVO": [
+      {
+        "timestamp": "2026-01-19T17:34:21.246818",
+        "agent_id": "BRAVO",
+        "agent_role": "farthest",
+        "position": [
+          5,
+          5
+        ],
+        "action": 3,
+        "action_name": "Mover Derecha",
+        "explanation": "🤖 **BRAVO (Contención Periférica)** en posición (5, 5)\n\n**Decisión:** Mover Derecha\n\n**Análisis del Entorno:**\n• 3 foco(s) de incendio detectado(s)\n• Fuego más cercano a 2 celdas en (5, 3)\n• 7 árboles en radio de 3 celdas\n\n**Motivo de la Decisión:**\n• Desplazándose hacia Este ➡️ para alcanzar objetivo\n• Distancia restante: 2 celdas\n• **Estrategia Bravo:** Objetivo en perímetro (2, 2) a 6 celdas\n• Ignorando fuego cercano para contención periférica\n\n**Factores Clave (Importancia):**\n• Centralidad: ██████████ 100%\n• Proximidad Fuego: █████ 50%\n• Densidad Arboles Local: ████ 47%\n",
+        "tactical_reasoning": "**🟠 TÁCTICA BRAVO - CONTENCIÓN PERIFÉRICA**\n\n**Doctrina Operacional:**\n• Prevenir expansión del perímetro\n• Proteger áreas no comprometidas\n• Crear líneas de contención\n\n**🎯 Estrategia Activa:**\n• Ignorando fuego cercano en (5, 3) - 2 celdas\n• Objetivo: Fuego perimetral en (2, 2) - 6 celdas\n• **Justificación:** Prevenir propagación en 6 celdas de área crítica\n\n",
+        "importance_scores": {
+          "proximidad_fuego": 0.5,
+          "cobertura_perimetral": 0.3,
+          "densidad_arboles_local": 0.4666666666666667,
+          "centralidad": 1.0
+        },
+        "distance_to_target": 6.0,
+        "confidence": 0.7166666666666667
+      },
+      {
+        "timestamp": "2026-01-19T17:34:21.247223",
+        "agent_id": "BRAVO",
+        "agent_role": "farthest",
+        "position": [
+          5,
+          6
+        ],
+        "action": 3,
+        "action_name": "Mover Derecha",
+        "explanation": "🤖 **BRAVO (Contención Periférica)** en posición (5, 6)\n\n**Decisión:** Mover Derecha\n\n**Análisis del Entorno:**\n• 3 foco(s) de incendio detectado(s)\n• Fuego más cercano a 3 celdas en (5, 3)\n• 7 árboles en radio de 3 celdas\n\n**Motivo de la Decisión:**\n• Desplazándose hacia Este ➡️ para alcanzar objetivo\n• Distancia restante: 3 celdas\n• **Estrategia Bravo:** Objetivo en perímetro (2, 2) a 7 celdas\n• Ignorando fuego cercano para contención periférica\n\n**Factores Clave (Importancia):**\n• Centralidad: ██████████ 100%\n• Proximidad Fuego: █████ 54%\n• Densidad Arboles Local: █████ 50%\n",
+        "tactical_reasoning": "**🟠 TÁCTICA BRAVO - CONTENCIÓN PERIFÉRICA**\n\n**Doctrina Operacional:**\n• Prevenir expansión del perímetro\n• Proteger áreas no comprometidas\n• Crear líneas de contención\n\n**🎯 Estrategia Activa:**\n• Ignorando fuego cercano en (5, 3) - 3 celdas\n• Objetivo: Fuego perimetral en (2, 2) - 7 celdas\n• **Justificación:** Prevenir propagación en 7 celdas de área crítica\n\n",
+        "importance_scores": {
+          "proximidad_fuego": 0.5357142857142857,
+          "cobertura_perimetral": 0.37499999999999994,
+          "densidad_arboles_local": 0.5,
+          "centralidad": 1.0
+        },
+        "distance_to_target": 7.0,
+        "confidence": 0.6986607142857143
+      },
+      {
+        "timestamp": "2026-01-19T17:34:21.247608",
+        "agent_id": "BRAVO",
+        "agent_role": "farthest",
+        "position": [
+          5,
+          7
+        ],
+        "action": 3,
+        "action_name": "Mover Derecha",
+        "explanation": "🤖 **BRAVO (Contención Periférica)** en posición (5, 7)\n\n**Decisión:** Mover Derecha\n\n**Análisis del Entorno:**\n• 3 foco(s) de incendio detectado(s)\n• Fuego más cercano a 3 celdas en (7, 8)\n• 7 árboles en radio de 3 celdas\n\n**Motivo de la Decisión:**\n• Desplazándose hacia Este ➡️ para alcanzar objetivo\n• Distancia restante: 3 celdas\n• **Estrategia Bravo:** Objetivo en perímetro (2, 2) a 8 celdas\n• Ignorando fuego cercano para contención periférica\n\n**Factores Clave (Importancia):**\n• Centralidad: ██████████ 100%\n• Proximidad Fuego: █████ 58%\n• Densidad Arboles Local: █████ 54%\n",
+        "tactical_reasoning": "**🟠 TÁCTICA BRAVO - CONTENCIÓN PERIFÉRICA**\n\n**Doctrina Operacional:**\n• Prevenir expansión del perímetro\n• Proteger áreas no comprometidas\n• Crear líneas de contención\n\n**🎯 Estrategia Activa:**\n• Ignorando fuego cercano en (7, 8) - 3 celdas\n• Objetivo: Fuego perimetral en (2, 2) - 8 celdas\n• **Justificación:** Prevenir propagación en 8 celdas de área crítica\n\n",
+        "importance_scores": {
+          "proximidad_fuego": 0.5769230769230769,
+          "cobertura_perimetral": 0.46153846153846156,
+          "densidad_arboles_local": 0.5384615384615384,
+          "centralidad": 1.0
+        },
+        "distance_to_target": 8.0,
+        "confidence": 0.6778846153846154
+      },
+      {
+        "timestamp": "2026-01-19T17:34:21.247995",
+        "agent_id": "BRAVO",
+        "agent_role": "farthest",
+        "position": [
+          5,
+          8
+        ],
+        "action": 3,
+        "action_name": "Mover Derecha",
+        "explanation": "🤖 **BRAVO (Contención Periférica)** en posición (5, 8)\n\n**Decisión:** Mover Derecha\n\n**Análisis del Entorno:**\n• 3 foco(s) de incendio detectado(s)\n• Fuego más cercano a 2 celdas en (7, 8)\n• 6 árboles en radio de 3 celdas\n\n**Motivo de la Decisión:**\n• Desplazándose hacia Este ➡️ para alcanzar objetivo\n• Distancia restante: 2 celdas\n• **Estrategia Bravo:** Objetivo en perímetro (2, 2) a 9 celdas\n• Ignorando fuego cercano para contención periférica\n\n**Factores Clave (Importancia):**\n• Centralidad: ██████████ 100%\n• Proximidad Fuego: ██████ 62%\n• Cobertura Perimetral: █████ 56%\n",
+        "tactical_reasoning": "**🟠 TÁCTICA BRAVO - CONTENCIÓN PERIFÉRICA**\n\n**Doctrina Operacional:**\n• Prevenir expansión del perímetro\n• Proteger áreas no comprometidas\n• Crear líneas de contención\n\n**🎯 Estrategia Activa:**\n• Ignorando fuego cercano en (7, 8) - 2 celdas\n• Objetivo: Fuego perimetral en (2, 2) - 9 celdas\n• **Justificación:** Prevenir propagación en 9 celdas de área crítica\n\n",
+        "importance_scores": {
+          "proximidad_fuego": 0.625,
+          "cobertura_perimetral": 0.5625,
+          "densidad_arboles_local": 0.5,
+          "centralidad": 1.0
+        },
+        "distance_to_target": 9.0,
+        "confidence": 0.6640625
+      },
+      {
+        "timestamp": "2026-01-19T17:34:21.248360",
+        "agent_id": "BRAVO",
+        "agent_role": "farthest",
+        "position": [
+          5,
+          9
+        ],
+        "action": 3,
+        "action_name": "Mover Derecha",
+        "explanation": "🤖 **BRAVO (Contención Periférica)** en posición (5, 9)\n\n**Decisión:** Mover Derecha\n\n**Análisis del Entorno:**\n• 3 foco(s) de incendio detectado(s)\n• Fuego más cercano a 3 celdas en (7, 8)\n• 5 árboles en radio de 3 celdas\n\n**Motivo de la Decisión:**\n• Desplazándose hacia Este ➡️ para alcanzar objetivo\n• Distancia restante: 3 celdas\n• **Estrategia Bravo:** Objetivo en perímetro (2, 2) a 10 celdas\n• Ignorando fuego cercano para contención periférica\n\n**Factores Clave (Importancia):**\n• Centralidad: ██████████ 100%\n• Proximidad Fuego: ██████ 68%\n• Cobertura Perimetral: ██████ 68%\n",
+        "tactical_reasoning": "**🟠 TÁCTICA BRAVO - CONTENCIÓN PERIFÉRICA**\n\n**Doctrina Operacional:**\n• Prevenir expansión del perímetro\n• Proteger áreas no comprometidas\n• Crear líneas de contención\n\n**🎯 Estrategia Activa:**\n• Ignorando fuego cercano en (7, 8) - 3 celdas\n• Objetivo: Fuego perimetral en (2, 2) - 10 celdas\n• **Justificación:** Prevenir propagación en 10 celdas de área crítica\n\n",
+        "importance_scores": {
+          "proximidad_fuego": 0.6818181818181818,
+          "cobertura_perimetral": 0.6818181818181818,
+          "densidad_arboles_local": 0.4545454545454545,
+          "centralidad": 1.0
+        },
+        "distance_to_target": 10.0,
+        "confidence": 0.6477272727272727
+      }
+    ]
+  }
+}
