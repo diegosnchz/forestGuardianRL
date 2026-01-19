@@ -7,6 +7,7 @@ from matplotlib.colors import ListedColormap
 import os
 import requests
 from typing import Tuple, Dict, Optional
+from datetime import datetime
 
 class ForestFireEnv(gym.Env):
     """
@@ -52,6 +53,17 @@ class ForestFireEnv(gym.Env):
         self.wind_direction = 0.0  # 0° = Norte, 90° = Este, 180° = Sur, 270° = Oeste
         self.wind_speed = 5.0      # km/h
         
+        # ROTHERMEL: Humedad del combustible (Fuel Moisture Content)
+        # Valor 0-100% por celda, influye en propagación
+        self.fuel_moisture = None  # Se inicializa en reset()
+        self.base_fuel_moisture = 15.0  # 15% de humedad base (combustible seco)
+        
+        # MongoDB Atlas para asimilación de datos UAV
+        self.mongodb_client = None
+        self.mongodb_collection = None
+        self.mongodb_enabled = False
+        self._init_mongodb_connection()
+        
         # Agua infinita
         self.water_tanks = [999] * num_agents
         self.max_water = 999
@@ -74,8 +86,10 @@ class ForestFireEnv(gym.Env):
         # Estado del entorno
         self.grid = None
         self.elevation = None  # Mapa de elevación (0-1)
+        self.fuel_moisture = None  # Mapa de humedad del combustible (0-100%)
         self.agent_positions = []
         self.steps_count = 0
+        self.moisture_updates_count = 0  # Contador de actualizaciones de humedad
     
     def _fetch_real_weather(self) -> Dict:
         """
@@ -113,6 +127,50 @@ class ForestFireEnv(gym.Env):
         
         # Fallback a valores por defecto
         return {'wind_speed': 5.0, 'wind_direction': 0.0}
+    
+    def _init_mongodb_connection(self):
+        """
+        Inicializa conexión a MongoDB Atlas para asimilación de datos UAV.
+        Usa URI de variable de entorno o session_state de Streamlit.
+        """
+        try:
+            # Intentar importar pymongo
+            import pymongo
+            
+            # Intentar obtener URI de diferentes fuentes
+            mongodb_uri = None
+            
+            # 1. Variable de entorno
+            mongodb_uri = os.environ.get('MONGODB_URI')
+            
+            # 2. Streamlit session_state (si está disponible)
+            if not mongodb_uri:
+                try:
+                    import streamlit as st
+                    if hasattr(st, 'session_state') and 'mongodb_uri' in st.session_state:
+                        mongodb_uri = st.session_state.mongodb_uri
+                except:
+                    pass
+            
+            if mongodb_uri:
+                self.mongodb_client = pymongo.MongoClient(mongodb_uri, serverSelectionTimeoutMS=3000)
+                # Ping para verificar conexión
+                self.mongodb_client.admin.command('ping')
+                
+                # Usar colección 'fuel_moisture_updates' en database 'forestguardian'
+                db = self.mongodb_client['forestguardian']
+                self.mongodb_collection = db['fuel_moisture_updates']
+                
+                self.mongodb_enabled = True
+                print("✅ MongoDB Atlas conectado para asimilación de datos UAV")
+            else:
+                print("ℹ️  MongoDB URI no configurado - asimilación de datos deshabilitada")
+                
+        except ImportError:
+            print("ℹ️  pymongo no instalado - asimilación de datos deshabilitada")
+        except Exception as e:
+            print(f"⚠️  Error conectando a MongoDB: {e}")
+            self.mongodb_enabled = False
     
     def _generate_elevation_map(self) -> np.ndarray:
         """
@@ -152,24 +210,48 @@ class ForestFireEnv(gym.Env):
         
         return elevation.astype(np.float32)
     
+    def _generate_fuel_moisture_map(self) -> np.ndarray:
+        """
+        Genera mapa de humedad del combustible (Fuel Moisture Content).
+        Basado en elevación y variabilidad espacial.
+        
+        Returns:
+            Array (grid_size, grid_size) con valores 5-35% (rango típico)
+        """
+        # Humedad base varía con elevación (más húmedo en zonas altas)
+        moisture = self.base_fuel_moisture + self.elevation * 15.0
+        
+        # Agregar variabilidad espacial (ruido aleatorio)
+        noise = self.np_random.uniform(-5, 5, size=(self.grid_size, self.grid_size))
+        moisture += noise
+        
+        # Clip a rango realista 5-35% (combustible muy seco a moderadamente húmedo)
+        moisture = np.clip(moisture, 5.0, 35.0)
+        
+        return moisture.astype(np.float32)
+    
     def _calculate_fire_spread_probability(
         self, 
         from_pos: Tuple[int, int], 
         to_pos: Tuple[int, int]
     ) -> float:
         """
-        Calcula la probabilidad de propagación del fuego considerando viento y elevación.
+        MODELO DE ROTHERMEL SIMPLIFICADO:
+        Calcula probabilidad de propagación considerando:
+        1. Viento (dirección y velocidad vectorial)
+        2. Elevación (pendiente del terreno)
+        3. Humedad del combustible (Fuel Moisture Content)
         
         Args:
             from_pos: Posición origen del fuego (row, col)
             to_pos: Posición destino (row, col)
         
         Returns:
-            Probabilidad ajustada (0-1)
+            Probabilidad ajustada según Rothermel (0-1)
         """
         base_prob = self.base_fire_spread_prob
         
-        # 1. Factor de viento vectorial
+        # 1. FACTOR DE VIENTO VECTORIAL (modelo de Rothermel)
         # Calcular dirección del movimiento del fuego
         dr = to_pos[0] - from_pos[0]  # Positivo = Sur
         dc = to_pos[1] - from_pos[1]  # Positivo = Este
@@ -182,25 +264,48 @@ class ForestFireEnv(gym.Env):
         if angle_diff > 180:
             angle_diff = 360 - angle_diff
         
-        # Factor de viento: máximo cuando fuego va en dirección del viento
-        wind_factor = 1.0 + (self.wind_speed / 20.0) * (1 - angle_diff / 180.0)
-        wind_factor = np.clip(wind_factor, 0.5, 3.0)
+        # Factor de viento con curva exponencial (Rothermel)
+        # A favor del viento: multiplica hasta 4x
+        # En contra del viento: reduce hasta 0.3x
+        alignment = (1 - angle_diff / 180.0)  # 1.0 = mismo sentido, -1.0 = opuesto
         
-        # 2. Factor de elevación
-        # Fuego sube más fácilmente cuesta arriba
+        # Wind speed factor: U^1.5 (exponente típico en Rothermel)
+        wind_multiplier = (self.wind_speed / 10.0) ** 1.5
+        wind_factor = 1.0 + wind_multiplier * alignment
+        wind_factor = np.clip(wind_factor, 0.15, 5.0)
+        
+        # 2. FACTOR DE ELEVACIÓN (pendiente)
+        # Rothermel: fuego acelera significativamente cuesta arriba
         elev_from = self.elevation[from_pos[0], from_pos[1]]
         elev_to = self.elevation[to_pos[0], to_pos[1]]
-        elev_diff = elev_to - elev_from
+        slope = elev_to - elev_from  # Pendiente relativa
         
-        if elev_diff > 0:  # Cuesta arriba
-            elevation_factor = 1.0 + elev_diff * 2.0
+        # Fórmula de Rothermel para pendiente
+        # φs = 5.275 * β^(-0.3) * (tan(θ))^2
+        # Simplificado: pendiente positiva aumenta dramáticamente
+        if slope > 0:  # Cuesta arriba
+            elevation_factor = 1.0 + slope * 8.0  # Efecto muy fuerte (Rothermel)
         else:  # Cuesta abajo
-            elevation_factor = 1.0 + elev_diff * 0.5
+            elevation_factor = 1.0 + slope * 0.2  # Efecto menor
         
-        elevation_factor = np.clip(elevation_factor, 0.3, 2.0)
+        elevation_factor = np.clip(elevation_factor, 0.1, 5.0)
         
-        # Probabilidad final
-        final_prob = base_prob * wind_factor * elevation_factor
+        # 3. FACTOR DE HUMEDAD DEL COMBUSTIBLE (Rothermel)
+        # Humedad alta reduce drásticamente la propagación
+        moisture = self.fuel_moisture[to_pos[0], to_pos[1]]
+        
+        # Fórmula de Rothermel: ηM = 1 - 2.59*(Mf/Mx) + 5.11*(Mf/Mx)^2 - 3.52*(Mf/Mx)^3
+        # Simplificado: decaimiento exponencial
+        # FMC < 10%: combustible muy seco (factor ~1.0)
+        # FMC ~ 20%: combustible normal (factor ~0.6)
+        # FMC > 30%: combustible húmedo (factor ~0.2)
+        moisture_extinction = 35.0  # Humedad de extinción típica
+        moisture_factor = np.exp(-0.10 * (moisture - 5.0))
+        moisture_factor = np.clip(moisture_factor, 0.1, 1.0)
+        
+        # PROBABILIDAD FINAL (modelo de Rothermel combinado)
+        final_prob = base_prob * wind_factor * elevation_factor * moisture_factor
+        
         return np.clip(final_prob, 0.0, 1.0)
         
     def reset(self, seed=None, options=None):
@@ -212,6 +317,10 @@ class ForestFireEnv(gym.Env):
         
         # Generar mapa de elevación
         self.elevation = self._generate_elevation_map()
+        
+        # Generar mapa de humedad del combustible
+        self.fuel_moisture = self._generate_fuel_moisture_map()
+        self.moisture_updates_count = 0
         
         # Obtener clima real o generar aleatorio
         if self.use_real_weather:
@@ -340,6 +449,11 @@ class ForestFireEnv(gym.Env):
             
             # Actualizar posición
             self.agent_positions[i] = (r, c)
+            
+            # ASIMILACIÓN DE DATOS UAV: Actualizar humedad en MongoDB
+            # Cuando un dron pasa sobre una celda, simula medición de humedad
+            if self.mongodb_enabled and (old_r, old_c) != (r, c):
+                self._update_fuel_moisture_mongodb(r, c, i)
             
             # ACCIÓN 5: APAGAR FUEGO (Radio 3x3)
             if action == 5:
@@ -501,3 +615,86 @@ class ForestFireEnv(gym.Env):
         if 0 <= row < self.grid_size and 0 <= col < self.grid_size:
             return float(self.elevation[row, col])
         return 0.0
+    
+    def _update_fuel_moisture_mongodb(self, row: int, col: int, agent_id: int):
+        """
+        ASIMILACIÓN DE DATOS UAV:
+        Actualiza el valor de humedad del combustible en MongoDB Atlas.
+        Simula medición en tiempo real por drones.
+        
+        Args:
+            row: Fila de la celda
+            col: Columna de la celda
+            agent_id: ID del agente que realiza la medición (0, 1, 2)
+        """
+        try:
+            # Obtener humedad actual de la celda
+            current_moisture = float(self.fuel_moisture[row, col])
+            
+            # Simular pequeña variación por medición UAV (±2%)
+            measured_moisture = current_moisture + self.np_random.uniform(-2.0, 2.0)
+            measured_moisture = np.clip(measured_moisture, 5.0, 35.0)
+            
+            # Actualizar localmente
+            self.fuel_moisture[row, col] = measured_moisture
+            self.moisture_updates_count += 1
+            
+            # Documento para MongoDB
+            agent_names = ['ALPHA', 'BRAVO', 'GAMMA']
+            document = {
+                'timestamp': datetime.utcnow().isoformat(),
+                'step': self.steps_count,
+                'agent_id': agent_names[agent_id] if agent_id < len(agent_names) else f'AGENT_{agent_id}',
+                'position': {
+                    'row': int(row),
+                    'col': int(col)
+                },
+                'fuel_moisture': {
+                    'value': float(measured_moisture),
+                    'unit': 'percent',
+                    'previous_value': float(current_moisture)
+                },
+                'environmental_data': {
+                    'elevation': float(self.elevation[row, col]),
+                    'wind_speed': float(self.wind_speed),
+                    'wind_direction': float(self.wind_direction),
+                    'cell_state': int(self.grid[row, col])  # 0=vacío, 1=árbol, 2=fuego
+                },
+                'metadata': {
+                    'grid_size': self.grid_size,
+                    'update_number': self.moisture_updates_count
+                }
+            }
+            
+            # Insertar en MongoDB (async en producción)
+            self.mongodb_collection.insert_one(document)
+            
+        except Exception as e:
+            # No detener simulación si falla MongoDB
+            if self.steps_count == 1:  # Solo mostrar en primer paso
+                print(f"⚠️  Error actualizando MongoDB: {e}")
+    
+    def get_fuel_moisture_at(self, row: int, col: int) -> float:
+        """Obtiene la humedad del combustible en una posición específica."""
+        if 0 <= row < self.grid_size and 0 <= col < self.grid_size:
+            return float(self.fuel_moisture[row, col])
+        return self.base_fuel_moisture
+    
+    def get_fuel_moisture_stats(self) -> Dict:
+        """Retorna estadísticas de humedad del combustible."""
+        return {
+            'mean': float(np.mean(self.fuel_moisture)),
+            'min': float(np.min(self.fuel_moisture)),
+            'max': float(np.max(self.fuel_moisture)),
+            'std': float(np.std(self.fuel_moisture)),
+            'updates_count': self.moisture_updates_count
+        }
+    
+    def close(self):
+        """Cierra conexión a MongoDB al finalizar."""
+        if self.mongodb_client:
+            try:
+                self.mongodb_client.close()
+            except:
+                pass
+        super().close() if hasattr(super(), 'close') else None

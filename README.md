@@ -3,6 +3,16 @@
 Sistema de control multi-agente para extinción de incendios forestales con algoritmos tácticos coordinados, sistema XAI de explicabilidad, y **Mission Logger para tracking histórico en MongoDB Atlas**.
 
 ## 🆕 Nuevas Características
+### 🔥 Modelo de Rothermel (v2.0)
+- **Propagación Realista**: Basada en modelo científico (USDA Forest Service, 1972)
+- **Humedad del Combustible**: Mapa dinámico 5-35% que afecta propagación
+- **Viento Vectorial**: Dirección y velocidad influyen hasta 5x en propagación
+- **Factor de Pendiente**: Fuego acelera hasta 5x cuesta arriba
+- **Asimilación UAV**: Drones actualizan humedad en MongoDB Atlas en tiempo real
+
+👉 **[QUICKSTART Rothermel](ROTHERMEL_IMPLEMENTATION_SUMMARY.md)** - Guía rápida  
+👉 **[Documentación técnica Rothermel](ROTHERMEL_MODEL_README.md)** - Modelo completo
+
 
 ### 📜 Mission Logger (MongoDB Atlas)
 - **Persistencia**: Guarda automáticamente cada simulación en MongoDB Atlas
