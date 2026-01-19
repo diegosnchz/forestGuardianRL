@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html>
+<head>
+    
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="https://netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap-glyphicons.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.2.0/css/all.min.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/python-visualization/folium/folium/templates/leaflet.awesome.rotate.min.css"/>
+    
+            <meta name="viewport" content="width=device-width,
+                initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+            <style>
+                #map_13da1245fd13019fccbaf14bf9f2ee36 {
+                    position: relative;
+                    width: 100.0%;
+                    height: 100.0%;
+                    left: 0.0%;
+                    top: 0.0%;
+                }
+                .leaflet-container { font-size: 1rem; }
+            </style>
+
+            <style>html, body {
+                width: 100%;
+                height: 100%;
+                margin: 0;
+                padding: 0;
+            }
+            </style>
+
+            <style>#map {
+                position:absolute;
+                top:0;
+                bottom:0;
+                right:0;
+                left:0;
+                }
+            </style>
+
+            <script>
+                L_NO_TOUCH = false;
+                L_DISABLE_3D = false;
+            </script>
+
+        
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-minimap/3.6.1/Control.MiniMap.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet-minimap/3.6.1/Control.MiniMap.css"/>
+    <script src="https://cdn.jsdelivr.net/gh/ljagis/leaflet-measure@2.1.7/dist/leaflet-measure.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/ljagis/leaflet-measure@2.1.7/dist/leaflet-measure.min.css"/>
+    <script src="https://cdn.jsdelivr.net/npm/leaflet.fullscreen@3.0.0/Control.FullScreen.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.fullscreen@3.0.0/Control.FullScreen.css"/>
+</head>
+<body>
+    
+    
+            <div class="folium-map" id="map_13da1245fd13019fccbaf14bf9f2ee36" ></div>
+        
+</body>
+<script>
+    
+    
+            var map_13da1245fd13019fccbaf14bf9f2ee36 = L.map(
+                "map_13da1245fd13019fccbaf14bf9f2ee36",
+                {
+                    center: [19.414347826086956, -99.19413043478262],
+                    crs: L.CRS.EPSG3857,
+                    ...{
+  "zoom": 13,
+  "zoomControl": true,
+  "preferCanvas": false,
+}
+
+                }
+            );
+
+            
+
+        
+    
+            var tile_layer_d436b8adf1dd6a9b8da8be38d9fef5d8 = L.tileLayer(
+                "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+                {
+  "minZoom": 0,
+  "maxZoom": 19,
+  "maxNativeZoom": 19,
+  "noWrap": false,
+  "attribution": "\u0026copy; \u003ca href=\"https://www.openstreetmap.org/copyright\"\u003eOpenStreetMap\u003c/a\u003e contributors",
+  "subdomains": "abc",
+  "detectRetina": false,
+  "tms": false,
+  "opacity": 1,
+}
+
+            );
+        
+    
+            tile_layer_d436b8adf1dd6a9b8da8be38d9fef5d8.addTo(map_13da1245fd13019fccbaf14bf9f2ee36);
+        
+    
+            var tile_layer_c16e02b8b2b9d44d0220201e1e6c68e7 = L.tileLayer(
+                "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+                {
+  "minZoom": 0,
+  "maxZoom": 20,
+  "maxNativeZoom": 20,
+  "noWrap": false,
+  "attribution": "\u0026copy; \u003ca href=\"https://www.openstreetmap.org/copyright\"\u003eOpenStreetMap\u003c/a\u003e contributors \u0026copy; \u003ca href=\"https://carto.com/attributions\"\u003eCARTO\u003c/a\u003e",
+  "subdomains": "abcd",
+  "detectRetina": false,
+  "tms": false,
+  "opacity": 1,
+}
+
+            );
+        
+    
+            tile_layer_c16e02b8b2b9d44d0220201e1e6c68e7.addTo(map_13da1245fd13019fccbaf14bf9f2ee36);
+        
+    
+            var tile_layer_35117de34bdf280decf4a4e04b0326f6 = L.tileLayer(
+                "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+                {
+  "minZoom": 0,
+  "maxZoom": 20,
+  "maxNativeZoom": 20,
+  "noWrap": false,
+  "attribution": "\u0026copy; \u003ca href=\"https://www.openstreetmap.org/copyright\"\u003eOpenStreetMap\u003c/a\u003e contributors \u0026copy; \u003ca href=\"https://carto.com/attributions\"\u003eCARTO\u003c/a\u003e",
+  "subdomains": "abcd",
+  "detectRetina": false,
+  "tms": false,
+  "opacity": 1,
+}
+
+            );
+        
+    
+            tile_layer_35117de34bdf280decf4a4e04b0326f6.addTo(map_13da1245fd13019fccbaf14bf9f2ee36);
+        
+    
+            var feature_group_fbac82fdbdf4064fbb2067968f064c1d = L.featureGroup(
+                {
+}
+            );
+        
+    
+            var polygon_70d42db9c69310bd7cfef145c48f1aa8 = L.polygon(
+                [[19.42, -99.2], [19.42, -99.19], [19.43, -99.19], [19.43, -99.2], [19.42, -99.2]],
+                {"bubblingMouseEvents": true, "color": "#FF0000", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#FF0000", "fillOpacity": 0.3, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 1.0, "smoothFactor": 1.0, "stroke": true, "weight": 2}
+            ).addTo(feature_group_fbac82fdbdf4064fbb2067968f064c1d);
+        
+    
+            polygon_70d42db9c69310bd7cfef145c48f1aa8.bindTooltip(
+                `<div>
+                     
+    <div style='font-family: Arial, sans-serif; min-width: 200px;'>
+        <h4 style='margin: 0 0 10px 0; color: #333;'>
+            Bosque de Pinos - Zona Norte
+        </h4>
+        <hr style='margin: 10px 0; border: none; border-top: 1px solid #ddd;'>
+        <table style='width: 100%; font-size: 12px;'>
+            <tr>
+                <td style='padding: 3px; color: #666;'><b>Tipo:</b></td>
+                <td style='padding: 3px;'>coniferas</td>
+            </tr>
+    
+            <tr>
+                <td style='padding: 3px; color: #666;'><b>Riesgo:</b></td>
+                <td style='padding: 3px;'>
+                    <span style='background: #FF0000; color: white; padding: 2px 6px; border-radius: 3px;'>
+                        ALTO
+                    </span>
+                </td>
+            </tr>
+        
+            <tr>
+                <td style='padding: 3px; color: #666;'><b>Área:</b></td>
+                <td style='padding: 3px;'>125.5 ha</td>
+            </tr>
+        
+            <tr>
+                <td style='padding: 3px; color: #666;'><b>Densidad:</b></td>
+                <td style='padding: 3px;'>850 árboles/ha</td>
+            </tr>
+        
+        </table>
+    </div>
+    
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var polygon_6bee815cee54c13d7ff61710800df501 = L.polygon(
+                [[19.4, -99.21], [19.4, -99.2], [19.41, -99.2], [19.41, -99.21], [19.4, -99.21]],
+                {"bubblingMouseEvents": true, "color": "#FFA500", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#FFA500", "fillOpacity": 0.3, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 1.0, "smoothFactor": 1.0, "stroke": true, "weight": 2}
+            ).addTo(feature_group_fbac82fdbdf4064fbb2067968f064c1d);
+        
+    
+            polygon_6bee815cee54c13d7ff61710800df501.bindTooltip(
+                `<div>
+                     
+    <div style='font-family: Arial, sans-serif; min-width: 200px;'>
+        <h4 style='margin: 0 0 10px 0; color: #333;'>
+            Bosque Mixto - Zona Sur
+        </h4>
+        <hr style='margin: 10px 0; border: none; border-top: 1px solid #ddd;'>
+        <table style='width: 100%; font-size: 12px;'>
+            <tr>
+                <td style='padding: 3px; color: #666;'><b>Tipo:</b></td>
+                <td style='padding: 3px;'>mixto</td>
+            </tr>
+    
+            <tr>
+                <td style='padding: 3px; color: #666;'><b>Riesgo:</b></td>
+                <td style='padding: 3px;'>
+                    <span style='background: #FFA500; color: white; padding: 2px 6px; border-radius: 3px;'>
+                        MEDIO
+                    </span>
+                </td>
+            </tr>
+        
+            <tr>
+                <td style='padding: 3px; color: #666;'><b>Área:</b></td>
+                <td style='padding: 3px;'>87.3 ha</td>
+            </tr>
+        
+            <tr>
+                <td style='padding: 3px; color: #666;'><b>Densidad:</b></td>
+                <td style='padding: 3px;'>620 árboles/ha</td>
+            </tr>
+        
+        </table>
+    </div>
+    
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var polygon_fe7567073129be751888c6d233739f20 = L.polygon(
+                [[19.41, -99.18], [19.41, -99.17], [19.42, -99.17], [19.42, -99.18], [19.41, -99.18]],
+                {"bubblingMouseEvents": true, "color": "#00FF00", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#00FF00", "fillOpacity": 0.3, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 1.0, "smoothFactor": 1.0, "stroke": true, "weight": 2}
+            ).addTo(feature_group_fbac82fdbdf4064fbb2067968f064c1d);
+        
+    
+            polygon_fe7567073129be751888c6d233739f20.bindTooltip(
+                `<div>
+                     
+    <div style='font-family: Arial, sans-serif; min-width: 200px;'>
+        <h4 style='margin: 0 0 10px 0; color: #333;'>
+            Reserva Natural - Zona Este
+        </h4>
+        <hr style='margin: 10px 0; border: none; border-top: 1px solid #ddd;'>
+        <table style='width: 100%; font-size: 12px;'>
+            <tr>
+                <td style='padding: 3px; color: #666;'><b>Tipo:</b></td>
+                <td style='padding: 3px;'>protegida</td>
+            </tr>
+    
+            <tr>
+                <td style='padding: 3px; color: #666;'><b>Riesgo:</b></td>
+                <td style='padding: 3px;'>
+                    <span style='background: #00FF00; color: white; padding: 2px 6px; border-radius: 3px;'>
+                        BAJO
+                    </span>
+                </td>
+            </tr>
+        
+            <tr>
+                <td style='padding: 3px; color: #666;'><b>Área:</b></td>
+                <td style='padding: 3px;'>203.8 ha</td>
+            </tr>
+        
+            <tr>
+                <td style='padding: 3px; color: #666;'><b>Densidad:</b></td>
+                <td style='padding: 3px;'>450 árboles/ha</td>
+            </tr>
+        
+        </table>
+    </div>
+    
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            feature_group_fbac82fdbdf4064fbb2067968f064c1d.addTo(map_13da1245fd13019fccbaf14bf9f2ee36);
+        
+    
+            var feature_group_25ae0554e718f6775059de7488aaefdf = L.featureGroup(
+                {
+}
+            );
+        
+    
+            var marker_f695e92159f5a3e145ec0e05df8f18a8 = L.marker(
+                [19.425, -99.195],
+                {
+}
+            ).addTo(feature_group_25ae0554e718f6775059de7488aaefdf);
+        
+    
+            var icon_9f4a9642c3769fd88b4266c766c39ca4 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "red",
+  "iconColor": "white",
+  "icon": "tower-broadcast",
+  "prefix": "fa",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+            marker_f695e92159f5a3e145ec0e05df8f18a8.bindTooltip(
+                `<div>
+                     
+    <div style='font-family: Arial, sans-serif; min-width: 200px;'>
+        <h4 style='margin: 0 0 10px 0; color: #333;'>
+            Estación de Monitoreo Norte
+        </h4>
+        <hr style='margin: 10px 0; border: none; border-top: 1px solid #ddd;'>
+        <table style='width: 100%; font-size: 12px;'>
+            <tr>
+                <td style='padding: 3px; color: #666;'><b>Tipo:</b></td>
+                <td style='padding: 3px;'>estacion</td>
+            </tr>
+    
+        </table>
+    </div>
+    
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+                marker_f695e92159f5a3e145ec0e05df8f18a8.setIcon(icon_9f4a9642c3769fd88b4266c766c39ca4);
+            
+    
+            var marker_50a663f439d7dc9e5690a9d78818e845 = L.marker(
+                [19.405, -99.205],
+                {
+}
+            ).addTo(feature_group_25ae0554e718f6775059de7488aaefdf);
+        
+    
+            var icon_4f5cdbd68259e443d5d0c09c6f9137f9 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "red",
+  "iconColor": "white",
+  "icon": "tower-broadcast",
+  "prefix": "fa",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+            marker_50a663f439d7dc9e5690a9d78818e845.bindTooltip(
+                `<div>
+                     
+    <div style='font-family: Arial, sans-serif; min-width: 200px;'>
+        <h4 style='margin: 0 0 10px 0; color: #333;'>
+            Estación de Monitoreo Sur
+        </h4>
+        <hr style='margin: 10px 0; border: none; border-top: 1px solid #ddd;'>
+        <table style='width: 100%; font-size: 12px;'>
+            <tr>
+                <td style='padding: 3px; color: #666;'><b>Tipo:</b></td>
+                <td style='padding: 3px;'>estacion</td>
+            </tr>
+    
+        </table>
+    </div>
+    
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+                marker_50a663f439d7dc9e5690a9d78818e845.setIcon(icon_4f5cdbd68259e443d5d0c09c6f9137f9);
+            
+    
+            var marker_b89540253981c96670bce0ea5f36e07b = L.marker(
+                [19.415, -99.175],
+                {
+}
+            ).addTo(feature_group_25ae0554e718f6775059de7488aaefdf);
+        
+    
+            var icon_2a3fb05ffd42fd3e1b8501067820831d = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "red",
+  "iconColor": "white",
+  "icon": "tower-broadcast",
+  "prefix": "fa",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+            marker_b89540253981c96670bce0ea5f36e07b.bindTooltip(
+                `<div>
+                     
+    <div style='font-family: Arial, sans-serif; min-width: 200px;'>
+        <h4 style='margin: 0 0 10px 0; color: #333;'>
+            Estación de Monitoreo Este
+        </h4>
+        <hr style='margin: 10px 0; border: none; border-top: 1px solid #ddd;'>
+        <table style='width: 100%; font-size: 12px;'>
+            <tr>
+                <td style='padding: 3px; color: #666;'><b>Tipo:</b></td>
+                <td style='padding: 3px;'>estacion</td>
+            </tr>
+    
+        </table>
+    </div>
+    
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+                marker_b89540253981c96670bce0ea5f36e07b.setIcon(icon_2a3fb05ffd42fd3e1b8501067820831d);
+            
+    
+            feature_group_25ae0554e718f6775059de7488aaefdf.addTo(map_13da1245fd13019fccbaf14bf9f2ee36);
+        
+    
+            var feature_group_de916c7fd24a29b96093ee649a981f0e = L.featureGroup(
+                {
+}
+            );
+        
+    
+            var poly_line_b9f2cf293b20511e09d3c7cf2d523234 = L.polyline(
+                [[19.425, -99.195], [19.42, -99.1975], [19.415, -99.2], [19.41, -99.2025], [19.405, -99.205]],
+                {"bubblingMouseEvents": true, "color": "#1E90FF", "dashArray": null, "dashOffset": null, "fill": false, "fillColor": "#1E90FF", "fillOpacity": 0.2, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.8, "smoothFactor": 1.0, "stroke": true, "weight": 3}
+            ).addTo(feature_group_de916c7fd24a29b96093ee649a981f0e);
+        
+    
+            poly_line_b9f2cf293b20511e09d3c7cf2d523234.bindTooltip(
+                `<div>
+                     
+    <div style='font-family: Arial, sans-serif; min-width: 200px;'>
+        <h4 style='margin: 0 0 10px 0; color: #333;'>
+            Ruta de Patrulla Norte-Sur
+        </h4>
+        <hr style='margin: 10px 0; border: none; border-top: 1px solid #ddd;'>
+        <table style='width: 100%; font-size: 12px;'>
+            <tr>
+                <td style='padding: 3px; color: #666;'><b>Tipo:</b></td>
+                <td style='padding: 3px;'>ruta</td>
+            </tr>
+    
+        </table>
+    </div>
+    
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            feature_group_de916c7fd24a29b96093ee649a981f0e.addTo(map_13da1245fd13019fccbaf14bf9f2ee36);
+        
+    
+            var feature_group_8be6150213675d2841a8cef0b1fc08a1 = L.featureGroup(
+                {
+}
+            );
+        
+    
+            feature_group_8be6150213675d2841a8cef0b1fc08a1.addTo(map_13da1245fd13019fccbaf14bf9f2ee36);
+        
+    
+            var layer_control_95d9fbc1f3ef538f3485f98bb98e157a_layers = {
+                base_layers : {
+                    "openstreetmap" : tile_layer_d436b8adf1dd6a9b8da8be38d9fef5d8,
+                    "Claro" : tile_layer_c16e02b8b2b9d44d0220201e1e6c68e7,
+                    "Oscuro" : tile_layer_35117de34bdf280decf4a4e04b0326f6,
+                },
+                overlays :  {
+                    "Zonas Forestales" : feature_group_fbac82fdbdf4064fbb2067968f064c1d,
+                    "Estaciones" : feature_group_25ae0554e718f6775059de7488aaefdf,
+                    "Rutas de Patrulla" : feature_group_de916c7fd24a29b96093ee649a981f0e,
+                    "Otros" : feature_group_8be6150213675d2841a8cef0b1fc08a1,
+                },
+            };
+            let layer_control_95d9fbc1f3ef538f3485f98bb98e157a = L.control.layers(
+                layer_control_95d9fbc1f3ef538f3485f98bb98e157a_layers.base_layers,
+                layer_control_95d9fbc1f3ef538f3485f98bb98e157a_layers.overlays,
+                {
+  "position": "topright",
+  "collapsed": false,
+  "autoZIndex": true,
+}
+            ).addTo(map_13da1245fd13019fccbaf14bf9f2ee36);
+
+        
+    
+            var tile_layer_9e54f5ced6319b335a9041ecdb5a8d43 = L.tileLayer(
+                "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+                {"attribution": "\u0026copy; \u003ca href=\"https://www.openstreetmap.org/copyright\"\u003eOpenStreetMap\u003c/a\u003e contributors", "detect_retina": false, "max_native_zoom": 19, "max_zoom": 19, "min_zoom": 0, "no_wrap": false, "opacity": 1, "subdomains": "abc", "tms": false}
+            );
+            var mini_map_4db85e9158c501e2e29aaa28dd0d5cc3 = new L.Control.MiniMap(
+                tile_layer_9e54f5ced6319b335a9041ecdb5a8d43,
+                {
+  "position": "bottomright",
+  "width": 150,
+  "height": 150,
+  "collapsedWidth": 25,
+  "collapsedHeight": 25,
+  "zoomLevelOffset": -5,
+  "centerFixed": false,
+  "zoomAnimation": false,
+  "toggleDisplay": true,
+  "autoToggleDisplay": false,
+  "minimized": false,
+}
+            );
+            map_13da1245fd13019fccbaf14bf9f2ee36.addControl(mini_map_4db85e9158c501e2e29aaa28dd0d5cc3);
+        
+    
+            var measure_control_e708e37d90fa1633f028d8165737504d = new L.Control.Measure(
+                {
+  "position": "bottomleft",
+  "primaryLengthUnit": "meters",
+  "secondaryLengthUnit": "miles",
+  "primaryAreaUnit": "sqmeters",
+  "secondaryAreaUnit": "acres",
+});
+            map_13da1245fd13019fccbaf14bf9f2ee36.addControl(measure_control_e708e37d90fa1633f028d8165737504d);
+
+            // Workaround for using this plugin with Leaflet>=1.8.0
+            // https://github.com/ljagis/leaflet-measure/issues/171
+            L.Control.Measure.include({
+                _setCaptureMarkerIcon: function () {
+                    // disable autopan
+                    this._captureMarker.options.autoPanOnFocus = false;
+                    // default function
+                    this._captureMarker.setIcon(
+                        L.divIcon({
+                            iconSize: this._map.getSize().multiplyBy(2)
+                        })
+                    );
+                },
+            });
+
+        
+    
+            L.control.fullscreen(
+                {
+  "position": "topleft",
+  "title": "Full Screen",
+  "titleCancel": "Exit Full Screen",
+  "forceSeparateButton": false,
+}
+            ).addTo(map_13da1245fd13019fccbaf14bf9f2ee36);
+        
+</script>
+</html>

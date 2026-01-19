@@ -1,0 +1,159 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "id": "zona_norte_001",
+      "properties": {
+        "nombre": "Bosque de Pinos - Zona Norte",
+        "tipo": "coniferas",
+        "area": 125.5,
+        "area_unit": "hectareas",
+        "riesgo_incendio": "alto",
+        "densidad_arboles": 850,
+        "altitud_promedio": 1200,
+        "ultima_inspeccion": "2026-01-15",
+        "estacion_cercana": "EST-001",
+        "observaciones": "Zona con alta densidad de pinos, monitoreo constante"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-99.2000, 19.4200],
+            [-99.1900, 19.4200],
+            [-99.1900, 19.4300],
+            [-99.2000, 19.4300],
+            [-99.2000, 19.4200]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "zona_sur_002",
+      "properties": {
+        "nombre": "Bosque Mixto - Zona Sur",
+        "tipo": "mixto",
+        "area": 87.3,
+        "area_unit": "hectareas",
+        "riesgo_incendio": "medio",
+        "densidad_arboles": 620,
+        "altitud_promedio": 980,
+        "ultima_inspeccion": "2026-01-18",
+        "estacion_cercana": "EST-002",
+        "observaciones": "Mezcla de coníferas y latifoliadas"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-99.2100, 19.4000],
+            [-99.2000, 19.4000],
+            [-99.2000, 19.4100],
+            [-99.2100, 19.4100],
+            [-99.2100, 19.4000]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "zona_este_003",
+      "properties": {
+        "nombre": "Reserva Natural - Zona Este",
+        "tipo": "protegida",
+        "area": 203.8,
+        "area_unit": "hectareas",
+        "riesgo_incendio": "bajo",
+        "densidad_arboles": 450,
+        "altitud_promedio": 750,
+        "ultima_inspeccion": "2026-01-10",
+        "estacion_cercana": "EST-003",
+        "observaciones": "Área protegida con vigilancia 24/7"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-99.1800, 19.4100],
+            [-99.1700, 19.4100],
+            [-99.1700, 19.4200],
+            [-99.1800, 19.4200],
+            [-99.1800, 19.4100]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "estacion_001",
+      "properties": {
+        "nombre": "Estación de Monitoreo Norte",
+        "tipo": "estacion",
+        "capacidad_drones": 5,
+        "personal": 8,
+        "operativa": true,
+        "equipamiento": ["drones", "sensores", "torre_vigilancia"]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-99.1950, 19.4250]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "estacion_002",
+      "properties": {
+        "nombre": "Estación de Monitoreo Sur",
+        "tipo": "estacion",
+        "capacidad_drones": 3,
+        "personal": 5,
+        "operativa": true,
+        "equipamiento": ["drones", "sensores"]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-99.2050, 19.4050]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "estacion_003",
+      "properties": {
+        "nombre": "Estación de Monitoreo Este",
+        "tipo": "estacion",
+        "capacidad_drones": 4,
+        "personal": 6,
+        "operativa": true,
+        "equipamiento": ["drones", "sensores", "torre_vigilancia"]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-99.1750, 19.4150]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "ruta_patrulla_001",
+      "properties": {
+        "nombre": "Ruta de Patrulla Norte-Sur",
+        "tipo": "ruta",
+        "longitud": 5.2,
+        "longitud_unit": "km",
+        "tiempo_recorrido": 15,
+        "frecuencia_diaria": 4
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-99.1950, 19.4250],
+          [-99.1975, 19.4200],
+          [-99.2000, 19.4150],
+          [-99.2025, 19.4100],
+          [-99.2050, 19.4050]
+        ]
+      }
+    }
+  ]
+}
