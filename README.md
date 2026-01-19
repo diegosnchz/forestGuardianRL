@@ -23,9 +23,29 @@ Sistema jerárquico de control para extinción de incendios forestales usando Re
 
 - **`GIF/`**: Contiene los GIFs generados automáticamente
 
-## Uso
+## Instalación y Uso
 
-### Entrenar y Generar GIF
+### 1. Clonar el Repositorio
+
+```bash
+git clone https://github.com/diegosnchz/forestGuardianRL.git
+cd forestGuardianRL
+```
+
+### 2. Instalar Dependencias
+
+```bash
+pip install -r requirements.txt
+```
+
+**Dependencias incluidas:**
+- `gymnasium>=0.29.0` - Entorno de RL
+- `stable-baselines3>=2.0.0` - Algoritmo PPO
+- `matplotlib>=3.5.0` - Visualización
+- `numpy>=1.21.0` - Operaciones numéricas
+- `pillow>=9.0.0` - Generación de GIF
+
+### 3. Entrenar y Generar GIF
 
 ```bash
 python train_and_test.py
@@ -76,6 +96,14 @@ Esto ejecutará:
 | Initial Fires | 3 | Incendios iniciales |
 | Water Tank | 10 | Capacidad de agua |
 
+## Información de Ejecución
+
+- **Tiempo de entrenamiento**: ~2-3 minutos
+- **GPU/CPU**: CPU es suficiente
+- **RAM mínimo**: 2GB
+- **Python**: Compatible con Python 3.8+
+- **Sistema Operativo**: Windows, Linux, macOS
+
 ## Salida Esperada
 
 ```
@@ -84,13 +112,6 @@ Esto ejecutará:
 ✓ Frames: ~100
 ✓ Duración: ~20 segundos
 ```
-
-## Información de Ejecución
-
-- **Tiempo de entrenamiento**: ~2-3 minutos
-- **GPU/CPU**: CPU es suficiente
-- **RAM mínimo**: 2GB
-- **Dependencias**: gymnasium, stable-baselines3, numpy, matplotlib
 
 ## Modificaciones Recientes
 
