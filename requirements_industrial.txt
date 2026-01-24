@@ -1,0 +1,12 @@
+xarray
+zarr
+numba
+gymnasium
+torch
+xgboost
+panel
+holoviews
+bokeh
+pydeck
+pandas
+scikit-learn
