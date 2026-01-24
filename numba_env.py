@@ -1,252 +1,254 @@
+import numpy as np
 import gymnasium as gym
 from gymnasium import spaces
-import numpy as np
-import time
-from numba import jit, int32, float32
-import xarray as xr
+from numba import jit
+import networkx as nx
 
-# --- CONFIGURATION ---
-GRID_SIZE = 50   # Expanded scale for "Industrial" logic
-N_CHANNELS = 4   # 0: Terrain, 1: Humidity, 2: Fire, 3: Agents
-MAX_STEPS = 500
+# --- CONSTANTS ---
+CELL_EMPTY = 0
+CELL_TREE = 1
+CELL_FIRE = 2
+CELL_BURNT = 3
 
-# Constants for channels
-CH_TERRAIN = 0
-CH_HUMIDITY = 1
-CH_FIRE = 2
-CH_AGENTS = 3
+# Actions
+ACTION_NONE = 0
+ACTION_UP = 1
+ACTION_DOWN = 2
+ACTION_LEFT = 3
+ACTION_RIGHT = 4
+ACTION_EXTINGUISH = 5
 
-# --- NUMBA KERNEL (THE PHYSICS ENGINE) ---
-@jit(nopython=True, cache=True)
-def physics_step(state_grid, actions, agent_positions, fire_spread_prob, wind_dir):
+@jit(nopython=True)
+def _fast_fire_spread(grid, p_fire, p_burnout):
     """
-    Simulates one step of the environment dynamics.
-    Optimized with Numba for high-performance computing.
-    
-    state_grid: (C, H, W) float32 numpy array
-    actions: (N,) int array of agent actions
-    agent_positions: (N, 2) int array
-    fire_spread_prob: float
-    wind_dir: (2,) float vector (dx, dy) effect
+    Simulates Cellular Automata fire spread with persistence.
     """
-    C, H, W = state_grid.shape
-    num_agents = len(actions)
+    rows, cols = grid.shape
+    new_grid = grid.copy()
     
-    # 1. AGENT DYNAMICS
-    # Clean old positions
-    for i in range(num_agents):
-        r, c = agent_positions[i]
-        state_grid[CH_AGENTS, r, c] = 0.0
-        
-    for i in range(num_agents):
-        action = actions[i]
-        r, c = agent_positions[i]
-        
-        # 0: Up, 1: Down, 2: Left, 3: Right, 4: Stay/Suppress
-        dr, dc = 0, 0
-        if action == 0: dr = -1
-        elif action == 1: dr = 1
-        elif action == 2: dc = -1
-        elif action == 3: dc = 1
-        
-        nr, nc = r + dr, c + dc
-        
-        # Boundary checks
-        if 0 <= nr < H and 0 <= nc < W:
-            # Collision check (naive for performance: last one wins/overwrites or we check grid)
-            # Just move
-            agent_positions[i] = (nr, nc)
+    for r in range(rows):
+        for c in range(cols):
+            cell = grid[r, c]
             
-            # Action 5: Suppress Fire
-            if action == 5:
-                 # Suppress 3x3 area
-                 r_min = max(0, nr-1)
-                 r_max = min(H, nr+2)
-                 c_min = max(0, nc-1)
-                 c_max = min(W, nc+2)
-                 state_grid[CH_FIRE, r_min:r_max, c_min:c_max] = 0.0
-
-    # Write new positions
-    for i in range(num_agents):
-        r, c = agent_positions[i]
-        state_grid[CH_AGENTS, r, c] = 1.0
-
-    # 2. FIRE DYNAMICS (Cellular Automaton with Wind & Terrain)
-    # We need a copy to update synchronously
-    fire_grid = state_grid[CH_FIRE].copy()
-    terrain_grid = state_grid[CH_TERRAIN]
-    humidity_grid = state_grid[CH_HUMIDITY]
-    
-    # Iterate over grid (this loop is fast in Numba)
-    for r in range(H):
-        for c in range(W):
-            if state_grid[CH_FIRE, r, c] > 0.1:
-                # Fire exists here, check spread
+            if cell == CELL_FIRE:
+                # With p_burnout, it becomes burnt
+                if np.random.random() < p_burnout:
+                    new_grid[r, c] = CELL_BURNT
                 
-                # Dynamic Spread Probability
-                # Slope effect: Fire moves faster uphill (Higher Terrain)
-                # Wind effect
-                
-                for dr in range(-1, 2):
-                    for dc in range(-1, 2):
-                        if dr == 0 and dc == 0: continue
-                        
-                        nr, nc = r + dr, c + dc
-                        if 0 <= nr < H and 0 <= nc < W:
-                            if state_grid[CH_FIRE, nr, nc] < 0.1: # Not burning yet
-                                
-                                # Base prob
-                                prob = fire_spread_prob
-                                
-                                # Humidity Modifier (Higher humidity = lower prob)
-                                prob *= (1.0 - humidity_grid[nr, nc])
-                                
-                                # Terrain Modifier (Uphill spread)
-                                slope = terrain_grid[nr, nc] - terrain_grid[r, c]
-                                if slope > 0: prob *= (1.0 + slope * 2.0)
-                                
-                                # Wind Modifier (Directional bias)
-                                # Dot product of direction and wind
-                                v_norm = np.sqrt(dr*dr + dc*dc)
-                                dir_r = dr / v_norm
-                                dir_c = dc / v_norm
-                                wind_factor = dir_r * wind_dir[0] + dir_c * wind_dir[1]
-                                prob *= (1.0 + wind_factor)
-                                
-                                if np.random.random() < prob:
-                                    fire_grid[nr, nc] = 1.0
-                                    
-    state_grid[CH_FIRE] = fire_grid
+                # Try to spread to neighbors regardless if it burned out this step 
+                # (to ensure at least one spread attempt)
+                for dr, dc in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+                    nr, nc = r + dr, c + dc
+                    if 0 <= nr < rows and 0 <= nc < cols:
+                        if grid[nr, nc] == CELL_TREE:
+                            if np.random.random() < p_fire:
+                                new_grid[nr, nc] = CELL_FIRE
+                            
+    return new_grid
+
+@jit(nopython=True)
+def _get_agent_obs_grid(grid, agent_pos, view_radius):
+    """
+    Extracts a local grid observation for an agent.
+    Pads with 0 if out of bounds.
+    """
+    r, c = agent_pos
+    rows, cols = grid.shape
+    size = 2 * view_radius + 1
+    obs = np.zeros((size, size), dtype=np.int8)
     
-    # Calculate Reward metrics immediately
-    trees_burned = np.sum(fire_grid)
-    return state_grid, agent_positions, trees_burned
+    r_start = r - view_radius
+    c_start = c - view_radius
+    
+    for i in range(size):
+        for j in range(size):
+            cur_r = r_start + i
+            cur_c = c_start + j
+            if 0 <= cur_r < rows and 0 <= cur_c < cols:
+                obs[i, j] = grid[cur_r, cur_c]
+                
+    return obs
 
-class ForestGuardianEnv(gym.Env):
+class ForestFireMAEnv(gym.Env):
     """
-    The High-Performance Industrial Environment.
-    Wraps Xarray+Numba logic in a standard Gym API.
+    Multi-Agent Forest Fire Environment.
+    
+    State:
+        - Grid: HxW numpy array (Integers)
+        - Agents: List of (row, col) positions
+    
+    Action Space (Per Agent):
+        - 0: None
+        - 1: Up
+        - 2: Down
+        - 3: Left
+        - 4: Right
+        - 5: Extinguish (3x3 area center)
     """
-    metadata = {'render_modes': ['human', 'rgb_array']}
+    metadata = {'render.modes': ['human', 'rgb_array']}
 
-    def __init__(self, grid_size=GRID_SIZE, num_agents=2):
-        super(ForestGuardianEnv, self).__init__()
+    def __init__(self, grid_size=32, n_agents=2, view_radius=4):
+        super(ForestFireMAEnv, self).__init__()
         
         self.grid_size = grid_size
-        self.num_agents = num_agents
+        self.n_agents = n_agents
+        self.view_radius = view_radius
         
-        # Action Space: 4 moves + 1 wait + 1 suppress
-        self.action_space = spaces.MultiDiscrete([6] * num_agents)
+        # Grid dimensions
+        self.rows = grid_size
+        self.cols = grid_size
         
-        # Observation Space: Multi-channel Grid
-        self.observation_space = spaces.Box(
-            low=0, high=1, 
-            shape=(N_CHANNELS, grid_size, grid_size), 
-            dtype=np.float32
-        )
+        # Define Action Space (Discrete per agent)
+        # Note: In standard Gym, we often flatten this or use MultiDiscrete.
+        # Here we simulate independent choices.
+        self.action_space = spaces.MultiDiscrete([6] * n_agents)
         
-        self.state = None
-        self.agent_positions = None
-        self.steps = 0
+        # Observation Space: Needs to accommodate Graph + Grid info.
+        # For simplicity in Gym check compliance, we use a Dict.
+        # global_grid: The full map (channel 0: static/fire)
+        # agent_positions: Linear list
+        self.observation_space = spaces.Dict({
+            "grid": spaces.Box(low=0, high=2, shape=(self.rows, self.cols), dtype=np.int8),
+            "agents": spaces.Box(low=0, high=grid_size, shape=(n_agents, 2), dtype=np.int32)
+        })
+        
+        self.grid = None
+        self.agents = None
+        
+        # Physics Params
+        self.p_fire = 0.15 # Slightly faster for engagement
+        self.p_burnout = 0.04 # Corrected burnout to be slightly faster too
         
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
         
-        # Initialize Xarray Dataset for complex state management (Metadata)
-        # But we perform operations on the underlying numpy array for speed
+        # 1. Initialize Grid (Balanced Forest)
+        # 70% trees, 30% empty
+        self.grid = np.random.choice([CELL_EMPTY, CELL_TREE], 
+                                     size=(self.rows, self.cols), 
+                                     p=[0.3, 0.7]).astype(np.int8)
         
-        # 1. Terrain (Perlin noise-ish or simple gradient)
-        # Creating a simple mountain in the center
-        x = np.linspace(-1, 1, self.grid_size)
-        y = np.linspace(-1, 1, self.grid_size)
-        X, Y = np.meshgrid(x, y)
-        terrain = np.exp(-(X**2 + Y**2)/0.5) # Gaussian hill
-        
-        # 2. Humidity (Random pockets)
-        humidity = np.random.rand(self.grid_size, self.grid_size) * 0.5 + 0.2
-        
-        # 3. Fire (Start in random corners)
-        fire = np.zeros((self.grid_size, self.grid_size), dtype=np.float32)
-        start_fires = 3
-        for _ in range(start_fires):
-            fr, fc = np.random.randint(0, self.grid_size, size=2)
-            fire[fr, fc] = 1.0
+        # 2. Start some fires (Ensure num_fires are started on trees)
+        num_fires = 3 # Increased slightly
+        started = 0
+        tries = 0
+        while started < num_fires and tries < 100:
+            idx = np.random.randint(0, self.rows * self.cols)
+            r, c = divmod(idx, self.cols)
+            if self.grid[r, c] == CELL_TREE:
+                self.grid[r, c] = CELL_FIRE
+                started += 1
+            tries += 1
             
-        # 4. Agents
-        agents = np.zeros((self.grid_size, self.grid_size), dtype=np.float32)
-        self.agent_positions = np.zeros((self.num_agents, 2), dtype=np.int32)
-        for i in range(self.num_agents):
-            self.agent_positions[i] = [0, i] # Start at top left
-            agents[0, i] = 1.0
+        # 3. Spawn Agents (Randomly across the map to avoid stacking)
+        self.agents = []
+        for i in range(self.n_agents):
+            r = np.random.randint(0, self.rows)
+            c = np.random.randint(0, self.cols)
+            self.agents.append(np.array([r, c]))
             
-        # Combine into (C, H, W)
-        self.np_state = np.stack([terrain, humidity, fire, agents]).astype(np.float32)
+        self.agents = np.array(self.agents, dtype=np.int32)
         
-        self.steps = 0
-        return self.np_state, {}
+        return self._get_obs(), {}
 
     def step(self, actions):
-        self.steps += 1
+        """
+        actions: List/Array of ints, one per agent.
+        """
+        rewards = np.zeros(self.n_agents)
+        initial_trees = np.sum(self.grid == CELL_TREE)
         
-        # Constants for simulation
-        spread_prob = 0.05
-        wind = np.array([0.2, 0.5]) # Wind blowing South-East
-        
-        prev_fire_sum = np.sum(self.np_state[CH_FIRE])
-        
-        # --- THE NUMBA CALL ---
-        self.np_state, self.agent_positions, current_fire_sum = physics_step(
-            self.np_state, 
-            np.array(actions, dtype=np.int32), 
-            self.agent_positions,
-            spread_prob, 
-            wind
-        )
-        # ----------------------
-        
-        # Reward Calculation
-        # Penalty for fire existing (Global)
-        fire_penalty = -current_fire_sum * 0.1
-        
-        # Reward for suppressing (Difference in fire)
-        # If fire grew less than expected or shrank?
-        # Simple Logic: Maximize trees preserved (which is minimize fire sum)
-        
-        reward = fire_penalty
-        
-        terminated = False
-        truncated = False
-        if self.steps >= MAX_STEPS:
-            truncated = True
-        
-        # Termination: Fire out or All burned
-        if current_fire_sum == 0:
-            reward += 1000 # Mission Accomplished
-            terminated = True
-        elif current_fire_sum > (self.grid_size**2 * 0.8):
-            reward -= 1000 # Forest Lost
-            terminated = True
+        # 1. Apply Agent Actions
+        for i, action in enumerate(actions):
+            r, c = self.agents[i]
             
+            if action == ACTION_UP:
+                r = max(0, r - 1)
+            elif action == ACTION_DOWN:
+                r = min(self.rows - 1, r + 1)
+            elif action == ACTION_LEFT:
+                c = max(0, c - 1)
+            elif action == ACTION_RIGHT:
+                c = min(self.cols - 1, c + 1)
+            elif action == ACTION_EXTINGUISH:
+                # Extinguish 3x3 area around agent
+                # Reward for putting out fire?
+                extinguished_count = self._apply_extinguish(r, c)
+                rewards[i] += extinguished_count * 5.0 # High reward for executing task
+                
+            self.agents[i] = [r, c]
+            
+        # 2. Physics Step (Fire Spread)
+        trees_before_spread = np.sum(self.grid == CELL_TREE)
+        self.grid = _fast_fire_spread(self.grid, self.p_fire, self.p_burnout)
+        trees_after_spread = np.sum(self.grid == CELL_TREE)
+        
+        # Global Penalty for lost trees
+        burnt_trees = trees_before_spread - trees_after_spread
+        global_penalty = burnt_trees * -1.0
+        
+        # Add global penalty to all agents (Cooperative)
+        rewards += global_penalty
+        
+        terminated = False # Endless for now, or defined by steps
+        truncated = False
+        
+        # Calculate forest health
+        total_cells = self.rows * self.cols
+        current_trees = trees_after_spread
+        health_pct = (current_trees / total_cells) * 100.0
+        
         info = {
-            "fire_intensity": current_fire_sum,
-            "trees_lost_pct": (current_fire_sum / (self.grid_size**2)) * 100
+            "burnt_last_step": burnt_trees,
+            "forest_health": health_pct
         }
         
-        return self.np_state, reward, terminated, truncated, info
+        return self._get_obs(), rewards, terminated, truncated, info
 
-    def render(self):
-        # Needed for debug, implementing simple matplotlib
-        pass
+    def _apply_extinguish(self, r, c):
+        """
+        Extinguishes fires in 3x3 radius.
+        Returns number of fires put out.
+        """
+        count = 0
+        r_start = max(0, r - 1)
+        r_end = min(self.rows, r + 2)
+        c_start = max(0, c - 1)
+        c_end = min(self.cols, c + 2)
+        
+        for i in range(r_start, r_end):
+            for j in range(c_start, c_end):
+                if self.grid[i, j] == CELL_FIRE:
+                    self.grid[i, j] = CELL_EMPTY # or CELL_TREE (saved)? lets say EMPTY (burnt out but safe) or TREE (saved)
+                    # Design choice: Extinguishing saves the tree? 
+                    # Simpler: Extinguishing converts FIRE -> EMPTY (foam/water prevents burning but tree is damaged) 
+                    # OR FIRE -> TREE (miraculously saved).
+                    # Let's say it stops the fire, so it becomes Empty (scorched earth barrier) or Tree?
+                    # Let's make it powerful: FIRE -> EMPTY (stops spread).
+                    count += 1
+        return count
 
-if __name__ == "__main__":
-    # Quick Test
-    env = ForestGuardianEnv()
-    obs, _ = env.reset()
-    print("State Shape:", obs.shape)
-    
-    t0 = time.time()
-    for _ in range(100):
-        actions = [1, 2] # Dummy actions
-        obs, r, term, trunc, info = env.step(actions)
-        if term: break
-    print(f"100 Steps Time: {time.time()-t0:.4f}s")
+    def _get_obs(self):
+        return {
+            "grid": self.grid.copy(),
+            "agents": self.agents.copy()
+        }
+
+    def get_graph_data(self):
+        """
+        Helper to generate graph data for GAT agents.
+        Nodes: Agents
+        Edges: Agents within communication radius (e.g., 10 cells)
+        """
+        n = self.n_agents
+        adj = np.zeros((n, n))
+        
+        for i in range(n):
+            for j in range(i + 1, n):
+                dist = np.linalg.norm(self.agents[i] - self.agents[j])
+                if dist < 10.0: # Communication radius
+                    adj[i, j] = 1
+                    adj[j, i] = 1
+            adj[i, i] = 1 # Self-loop
+            
+        return adj

@@ -1,222 +1,195 @@
 import panel as pn
 import holoviews as hv
 import numpy as np
-import time
 import pandas as pd
-import threading
-from collections import deque
-from numba_env import ForestGuardianEnv, CH_FIRE, CH_AGENTS, CH_TERRAIN, N_CHANNELS
-from dqn_agent_xgb import Agent
-import pydeck as pdk
+from numba_env import ForestFireMAEnv, CELL_TREE, CELL_FIRE, CELL_EMPTY, CELL_BURNT
+from marl_agent import PPOAgent
+import torch
 
-pn.extension('deckgl')
+pn.extension('bokeh', template='fast')
 
 # --- CONFIG ---
-GRID_SIZE = 50
-NUM_AGENTS = 2
+GRID_SIZE = 40
+N_AGENTS = 2
+VIEW_RADIUS = 4
 
-# --- GLOBAL STATE ---
-# We use global variables for the simulation state to easily share between thread and UI
-current_state = None
-training_active = False
-episode_rewards = []
-loss_history = []
-agent = Agent(n_actions=6, grid_size=GRID_SIZE) # 6 Actions
-env = ForestGuardianEnv(grid_size=GRID_SIZE, num_agents=NUM_AGENTS)
+# Initialize Components
+env = ForestFireMAEnv(grid_size=GRID_SIZE, n_agents=N_AGENTS, view_radius=VIEW_RADIUS)
+agent = PPOAgent(n_agents=N_AGENTS, grid_size=GRID_SIZE)
 
-# --- DASHBOARD COMPONENTS ---
+# Global State
+is_running = False
+step_count = 0
+obs = env.reset()[0]
+total_rewards = []
+forest_health_history = []
+coordination_history = []
 
-# 1. METRICS
-# Use a DynamicMap to update the plot
-reward_data = deque(maxlen=1000)
-def get_reward_plot():
-    return hv.Curve(list(reward_data), 'Episode', 'Reward').opts(
-        color='#00ff41', line_width=2, title='Cumulative Reward', 
-        height=250, width=400, bgcolor='#111111', tools=['hover']
+# --- PLOTTING ---
+# We use HoloViews Streams/Pipe for high performance updates
+pipe_grid = hv.streams.Pipe(data=np.zeros((GRID_SIZE, GRID_SIZE)))
+pipe_agents = hv.streams.Pipe(data=[])
+pipe_metrics = hv.streams.Pipe(data=pd.DataFrame({'step': [], 'health': [], 'coordination': []}))
+
+def get_grid_plot(data):
+    # Map raw ints to colors
+    # 0: Empty (Black), 1: Tree (Green), 2: Fire (Red), 3: Burnt (Brown)
+    cmap = ['#1a1a1a', '#2ecc71', '#e74c3c', '#5d4037'] 
+    return hv.Image(data, bounds=(0, 0, GRID_SIZE, GRID_SIZE)).opts(
+        cmap=cmap, clim=(0, 3), width=600, height=600, 
+        xaxis=None, yaxis=None, title="Forest Grid"
     )
 
-metrics_col = pn.Column(
-    pn.pane.Markdown("### 📊 Live Training Metrics"),
-    pn.pane.HoloViews(hv.DynamicMap(get_reward_plot), sizing_mode="stretch_width")
-)
+def get_agent_plot(data):
+    if not data:
+        return hv.Points([]).opts(color='cyan', size=18)
+    return hv.Points(data).opts(color='#00ffff', size=18, marker='circle', line_color='black', line_width=2)
 
-# 2. XAI / CHATBOT
-chatbot = pn.chat.ChatInterface(
-    callback=lambda content, user, instance: f"Analyzing Q-Network... Agent chose action based on high fire probability in NE quadrant (XGBoost Confidence: 0.87).",
-    height=300
-)
-chatbot.send("I am Lumen, your XAI Assistant. Ask me about the agent's decisions.", user="Lumen", avatar="🤖")
+def get_metrics_plot(data):
+    if data is None or len(data) < 2:
+        return hv.Curve([], 'step', 'health').opts(title="Forest Health %", color='#2ecc71', ylim=(0, 100), xlim=(0, 100))
+    return hv.Curve(data, 'step', 'health').opts(title="Forest Health %", color='#2ecc71', ylim=(0, 100), interpolation='linear')
 
-# 3. 3D VISUALIZATION (PyDeck)
-def get_deckgl_view(state=None):
-    """
-    Transforms the numpy state (C, H, W) into a PyDeck Layer.
-    We'll treat the grid indices as lat/lon for simplicity (Micro-World).
-    """
-    lat0, lon0 = 37.77, -122.41
-    scale = 0.001
-    
-    view_state = pdk.ViewState(
-        latitude=lat0 + (GRID_SIZE/2)*scale, 
-        longitude=lon0 + (GRID_SIZE/2)*scale, 
-        zoom=12, 
-        pitch=45
-    )
+# Combine Plots
+grid_dmap = hv.DynamicMap(get_grid_plot, streams=[pipe_grid])
+agent_dmap = hv.DynamicMap(get_agent_plot, streams=[pipe_agents])
+metrics_dmap = hv.DynamicMap(get_metrics_plot, streams=[pipe_metrics])
 
-    if state is None:
-        return pdk.Deck(layers=[], initial_view_state=view_state, map_style="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json")
+main_view = (grid_dmap * agent_dmap).opts(bgcolor='#111111')
+
+# --- SIMULATION LOOP ---
+def get_heuristic_action(agent_idx, current_obs):
+    grid = current_obs['grid']
+    pos = current_obs['agents'][agent_idx]
+    r, c = pos
     
-    # Extract Fire Points
-    fire_grid = state[CH_FIRE]
-    # Get indices where fire > 0
-    ys, xs = np.where(fire_grid > 0.1)
-    intensities = fire_grid[ys, xs]
+    # Check if fire nearby in 3x3
+    fire_nearby = False
+    for dr in [-1, 0, 1]:
+        for dc in [-1, 0, 1]:
+            nr, nc = r + dr, c + dc
+            if 0 <= nr < grid.shape[0] and 0 <= nc < grid.shape[1]:
+                if grid[nr, nc] == CELL_FIRE:
+                    fire_nearby = True
+                    break
     
-    data = []
-    for y, x, i in zip(ys, xs, intensities):
-        data.append({
-            "position": [lon0 + x*scale, lat0 + y*scale],
-            "intensity": float(i),
-            "elevation": float(i) * 1000
-        })
+    if fire_nearby:
+        return 5 # Extinguish
+    
+    # Otherwise, move towards nearest fire
+    fire_positions = np.argwhere(grid == CELL_FIRE)
+    if len(fire_positions) == 0:
+        return np.random.randint(1, 5) # Wander
         
-    # Agents
-    agent_positions = []
-    # Find agents in grid CH_AGENTS
-    ay, ax = np.where(state[CH_AGENTS] > 0.5)
-    for y, x in zip(ay, ax):
-        agent_positions.append({
-             "position": [lon0 + x*scale, lat0 + y*scale],
-             "color": [0, 255, 255]
-        })
-
-    # Layers
-    fire_layer = pdk.Layer(
-        "ColumnLayer",
-        data=data,
-        get_position="position",
-        get_elevation="elevation",
-        elevation_scale=1,
-        radius=40,
-        get_fill_color="[255, intensity * 255, 0, 200]",
-        pickable=True,
-        auto_highlight=True,
-    )
+    # Find closest fire
+    dists = np.linalg.norm(fire_positions - pos, axis=1)
+    target = fire_positions[np.argmin(dists)]
     
-    agent_layer = pdk.Layer(
-        "ScatterplotLayer",
-        data=agent_positions,
-        get_position="position",
-        get_fill_color="color",
-        get_line_color=[0, 0, 0],
-        get_radius=60,
-        pickable=True,
-    )
-
-    r = pdk.Deck(
-        layers=[fire_layer, agent_layer], 
-        initial_view_state=view_state,
-        map_style="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
-        tooltip={"html": "<b>Intensity:</b> {intensity}"}
-    )
+    tr, tc = target
+    if tr < r: return 1 # UP
+    if tr > r: return 2 # DOWN
+    if tc < c: return 3 # LEFT
+    if tc > c: return 4 # RIGHT
     
-    return r
+    return np.random.randint(1, 5) # Fallback wander
 
-deck_pane = pn.pane.DeckGL(get_deckgl_view(), height=500, sizing_mode='stretch_width')
+def step_sim():
+    global obs, step_count, is_running
+    if not is_running:
+        return
 
-# --- TRAINING LOOP (Background Thread) ---
-def training_loop():
-    global current_state, training_active, episode_rewards
+    # 1. Get Actions
+    # Extract agent local views from global grid
+    # For prototype, we cheat and assume full grid passed or handle local extraction in Agent wrapper
+    # But numba_env step expects simple actions.
+    # Let's do random actions or simple heuristic for VISUAL DEMO if Agent not trained
+    # Or try to run agent forward pass
     
-    state, _ = env.reset()
-    total_reward = 0
+    # Needs (Batch, N, 1, H, W)
+    # Using heuristic for visual demo to show what agents SHOULD do
+    actions = [get_heuristic_action(i, obs) for i in range(N_AGENTS)]
     
-    while training_active:
-        # Flatten state for XGB: (4, 50, 50) -> (10000,)
-        state_flat = state.flatten()
-        
-        # Action selection (Multi-Agent simplified: all agents effectively controlled by one brain or round robin)
-        # For simplicity here, we assume 1 brain controlling agent 0 for now or duplicate logic
-        # Numba env expects array of actions.
-        actions = []
-        for i in range(NUM_AGENTS):
-             # Just pass the whole map to the agent
-             # In a real scenario, we'd pass local obs or global if centralized
-             actions.append(agent.select_action(state))
-             
-        next_state, reward, terminated, truncated, _ = env.step(actions)
-        
-        # Store transition
-        agent.memory.append((state, actions[0], reward, next_state)) # Simplified memory
-        agent.optimize_model()
-        
-        # XGB Reward Shaping Update
-        agent.xgb_shaper.add_experience(state_flat, np.sum(next_state[CH_FIRE]))
-        if agent.steps_done % 100 == 0:
-            agent.xgb_shaper.train()
-        
-        current_state = next_state
-        state = next_state
-        total_reward += reward
-        
-        if terminated or truncated:
-            reward_data.append(total_reward)
-            # No need to manually update reward_plot[0], DynamicMap handles it via get_reward_plot
-            
-            state, _ = env.reset()
-            total_reward = 0
-            agent.update_target_net()
+    # 2. Step Env
+    next_obs, rewards, term, trunc, info = env.step(actions)
+    obs = next_obs
+    
+    # 3. Update Plots
+    # Grid
+    pipe_grid.send(obs['grid'])
+    
+    # Agents (convert r,c to x,y for Bokeh: x=c, y=rows-r usually, but Image bounds are 0,0 to W,H)
+    # hv.Image origin is typically bottom-left? Or top-left depending on params. 
+    # Standard array (row, col) maps to (y, x) but inverted y often
+    # Let's map directly: r -> y, c -> x. 
+    # Numba grid[r,c]. 
+    agent_pos = obs['agents']
+    # Grid[r, c] -> Image(x, y)
+    # If hv.Image(bounds=(0,0, G,G)), y increases upwards. 
+    # Array row 0 is top -> y = G - 0.5
+    # Array col 0 is left -> x = 0.5
+    agent_coords = []
+    for p in agent_pos:
+        r, c = p
+        agent_coords.append((c + 0.5, GRID_SIZE - r - 0.5))
+    pipe_agents.send(agent_coords)
+    
+    # Metrics
+    step_count += 1
+    new_data = {'step': step_count, 'health': info.get('forest_health', 0), 'coordination': 0}
+    
+    # Update local history
+    forest_health_history.append(new_data)
+    if len(forest_health_history) > 100:
+        forest_health_history.pop(0)
+    
+    # Send update every step for smoothness
+    df = pd.DataFrame(forest_health_history)
+    pipe_metrics.send(df)
 
-        time.sleep(0.05) # Visual delay
+# Callback
+cb = pn.state.add_periodic_callback(step_sim, period=400, start=False)
 
-# --- CALLBACKS ---
-def update_view():
-    if current_state is not None:
-        deck_pane.object = get_deckgl_view(current_state)
+# --- CONTROLS ---
+btn_play = pn.widgets.Button(name='▶ Play', button_type='primary')
+btn_stop = pn.widgets.Button(name='⏸ Pause', button_type='warning')
+btn_reset = pn.widgets.Button(name='↺ Reset', button_type='danger')
 
-def toggle_training(event):
-    global training_active
-    if not training_active:
-        training_active = True
-        btn_train.name = "⏹ Stop Training"
-        btn_train.button_type = "danger"
-        t = threading.Thread(target=training_loop)
-        t.start()
-        # Add periodic callback to update UI
-        pn.state.add_periodic_callback(update_view, period=500)
-    else:
-        training_active = False
-        btn_train.name = "▶ Start Training"
-        btn_train.button_type = "success"
+def toggle_play(event):
+    global is_running
+    is_running = True
+    if not cb.running:
+        cb.start()
 
-btn_train = pn.widgets.Button(name="▶ Start Training", button_type="success", width=200)
-btn_train.on_click(toggle_training)
+def toggle_stop(event):
+    global is_running
+    is_running = False
+    cb.stop()
+
+def output_reset(event):
+    global obs, step_count
+    obs = env.reset()[0]
+    step_count = 0
+    pipe_grid.send(obs['grid'])
+    pipe_agents.send([])
+    pipe_metrics.send(pd.DataFrame({'step': [], 'health': [], 'coordination': []}))
+
+btn_play.on_click(toggle_play)
+btn_stop.on_click(toggle_stop)
+btn_reset.on_click(output_reset)
 
 # --- LAYOUT ---
-template = pn.template.FastListTemplate(
-    title="🌲 ForestGuardian Command Center",
-    theme="dark",
-    main=[
-        pn.Row(
-            pn.Column(
-                pn.pane.Markdown("## 🚁 Mission Control"),
-                btn_train,
-                metrics_col,
-                width=450
-            ),
-            pn.Column(
-                pn.pane.Markdown("## 🌍 Digital Twin (Deck.gl)"),
-                deck_pane
-            )
-        ),
-        pn.Row(
-            pn.Column(
-                pn.pane.Markdown("## 🧠 XAI Analysis"),
-                chatbot
-            )
-        )
-    ]
-).servable()
+dashboard = pn.Row(
+    pn.Column(
+        pn.pane.Markdown("# 🌲 ForestGuardian 2.0: MARL Core"),
+        pn.Row(btn_play, btn_stop, btn_reset),
+        main_view
+    ),
+    pn.Column(
+        pn.pane.Markdown("### Live Metrics"),
+        metrics_dmap,
+        pn.pane.Markdown("**System Status**:\n- Numba Physics: ON\n- GAT Network: Initialized\n- Device: CPU")
+    )
+)
 
 if __name__ == "__main__":
-    pn.serve(template, port=5006, show=True)
+    dashboard.show(port=5007)

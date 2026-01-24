@@ -11,8 +11,8 @@ if %errorlevel% neq 0 (
     pip install -r requirements_industrial.txt
 )
 
-echo 🚀 Launching HoloViz Panel Dashboard (Deck.gl 3D)...
-echo 🔗 Access your Digital Twin at http://localhost:5006
+echo 🚀 Launching HoloViz Panel Dashboard (2D MARL)...
+echo 🔗 Access your Command Center at http://localhost:5007
 echo.
 
 python panel_rl_dashboard.py
