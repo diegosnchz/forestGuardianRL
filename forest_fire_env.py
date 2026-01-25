@@ -16,7 +16,7 @@ class ForestFireEnv(gym.Env):
         self.grid_size = 10 
         self.fire_spread_prob = 0.1
         self.initial_trees = initial_trees
-        self.initial_fires = initial_fires
+        self.initial_fires = 8
         self.num_agents = num_agents
         
         # AGUA INFINITA
@@ -111,7 +111,8 @@ class ForestFireEnv(gym.Env):
                         nr, nc = r+dr, c+dc
                         if 0 <= nr < self.grid_size and 0 <= nc < self.grid_size:
                             if self.grid[nr,nc] == 2:
-                                self.grid[nr,nc] = 0 # Fuego apagado
+                                if self.np_random.random() < 0.3:
+                                    self.grid[nr,nc] = 0 # Fuego apagado
         
         # 2. Expansión Fuego (Muy lenta)
         new_fires = []

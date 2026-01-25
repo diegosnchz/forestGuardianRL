@@ -11,8 +11,8 @@ class GATLayer(nn.Module):
         h: (batch, N, in_features) node features
         adj: (batch, N, N) adjacency matrix (0/1)
     """
-    def __init__(self, in_features, out_features, dropout=0.6, alpha=0.2):
-        super(GATLayer, self).__init__()
+    def __init__(self, in_features: int, out_features: int, dropout: float = 0.6, alpha: float = 0.2):
+        super().__init__()
         self.in_features = in_features
         self.out_features = out_features
         self.dropout = dropout
@@ -45,8 +45,8 @@ class GATLayer(nn.Module):
         return F.elu(h_prime)
 
 class MARLNetwork(nn.Module):
-    def __init__(self, n_actions, input_dims, hidden_dim=64):
-        super(MARLNetwork, self).__init__()
+    def __init__(self, n_actions: int, input_dims: int, hidden_dim: int = 64):
+        super().__init__()
         # 1. Grid Encoder (CNN) for local view
         # Expecting input (1, ViewSize, ViewSize)
         self.cnn = nn.Sequential(
@@ -140,5 +140,5 @@ class PPOAgent:
     def save(self, path):
         torch.save(self.policy.state_dict(), path)
         
-    def load(self, path):
-        self.policy.load_state_dict(torch.load(path))
+    def load(self, path: str):
+        self.policy.load_state_dict(torch.load(path, weights_only=True))

@@ -116,8 +116,8 @@ class ForestFireMAEnv(gym.Env):
         self.agents = None
         
         # Physics Params
-        self.p_fire = 0.15 # Slightly faster for engagement
-        self.p_burnout = 0.04 # Corrected burnout to be slightly faster too
+        self.p_fire = 0.12 # Balanced spread
+        self.p_burnout = 0.02 # Fires last longer before dying on their own
         
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
@@ -129,7 +129,7 @@ class ForestFireMAEnv(gym.Env):
                                      p=[0.3, 0.7]).astype(np.int8)
         
         # 2. Start some fires (Ensure num_fires are started on trees)
-        num_fires = 3 # Increased slightly
+        num_fires = 8 # Significant but manageable outbreak
         started = 0
         tries = 0
         while started < num_fires and tries < 100:
@@ -219,13 +219,9 @@ class ForestFireMAEnv(gym.Env):
         for i in range(r_start, r_end):
             for j in range(c_start, c_end):
                 if self.grid[i, j] == CELL_FIRE:
-                    self.grid[i, j] = CELL_EMPTY # or CELL_TREE (saved)? lets say EMPTY (burnt out but safe) or TREE (saved)
-                    # Design choice: Extinguishing saves the tree? 
-                    # Simpler: Extinguishing converts FIRE -> EMPTY (foam/water prevents burning but tree is damaged) 
-                    # OR FIRE -> TREE (miraculously saved).
-                    # Let's say it stops the fire, so it becomes Empty (scorched earth barrier) or Tree?
-                    # Let's make it powerful: FIRE -> EMPTY (stops spread).
-                    count += 1
+                    if np.random.random() < 0.3: # 30% success rate per step
+                        self.grid[i, j] = CELL_EMPTY 
+                        count += 1
         return count
 
     def _get_obs(self):

@@ -1,0 +1,11 @@
+{
+  "exclude": [
+    "**/__pycache__",
+    "**/GIF",
+    "**/*.nbibc",
+    "**/*.pyc"
+  ],
+  "reportMissingImports": true,
+  "pythonVersion": "3.14",
+  "typeCheckingMode": "basic"
+}
