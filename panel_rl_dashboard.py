@@ -175,7 +175,7 @@ btn_reset.on_click(output_reset)
 # --- LAYOUT ---
 sidebar = pn.Column(
     pn.pane.Markdown("# FOREST GUARDIAN", css_classes=['muted-text']),
-    pn.pane.Markdown("SYSTEM PROTOCOL V2.5", style={'font-size': '0.7rem', 'color': '#64ffda'}),
+    pn.pane.Markdown("SYSTEM PROTOCOL V2.5", css_classes=['protocol-text']),
     pn.layout.Divider(),
     pn.pane.Markdown("### MISSION CONTROLS"),
     btn_play, btn_stop, btn_reset,

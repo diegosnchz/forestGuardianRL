@@ -132,14 +132,11 @@ class ForestFireEnv(gym.Env):
         return self._get_obs(), 0, terminated, truncated, {}
 
     def render_animation(self, frames, filename='simulation.gif', fps=5):
-        # RUTA ESPECÍFICA DEL USUARIO
-        base_dir = r"C:\Users\diego\Downloads\forestGuardianRL\GIF"
+        # RUTA DINÁMICA: Carpeta GIF dentro del proyecto
+        base_dir = os.path.join(os.getcwd(), "GIF")
         
         if not os.path.exists(base_dir):
-            try:
-                os.makedirs(base_dir)
-            except:
-                base_dir = "." 
+            os.makedirs(base_dir)
         
         full_path = os.path.join(base_dir, filename)
         
